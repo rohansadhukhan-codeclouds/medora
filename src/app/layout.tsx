@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { buildMetadata } from "@/config/metadata";
+import { JourneyProvider } from "@/features/journey/context/journey-provider";
+import { ChannelProvider } from "@/providers/channel-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
 
@@ -20,7 +22,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${medoraSans.variable} h-full`}>
       <body className="min-h-full flex flex-col font-sans">
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <ChannelProvider>
+            <JourneyProvider>{children}</JourneyProvider>
+          </ChannelProvider>
+        </QueryProvider>
       </body>
     </html>
   );

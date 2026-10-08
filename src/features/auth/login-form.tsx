@@ -40,7 +40,7 @@ export function LoginForm() {
     // Demo flow routes into the patient dashboard using mock session.
     void _values;
     await new Promise((resolve) => setTimeout(resolve, 400));
-    router.push("/dashboard");
+    router.push("/account");
   }
 
   return (
@@ -48,7 +48,7 @@ export function LoginForm() {
       <CardHeader>
         <CardTitle>Sign in</CardTitle>
         <CardDescription>
-          Access your Medora patient dashboard. Auth is currently a secure-ready
+          Access your Medora account. Auth is currently a secure-ready
           placeholder for development.
         </CardDescription>
       </CardHeader>

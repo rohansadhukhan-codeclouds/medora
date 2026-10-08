@@ -16,10 +16,7 @@ export function MarketingHeader() {
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <SiteLogo />
 
-        <nav
-          className="hidden items-center gap-8 md:flex"
-          aria-label="Primary"
-        >
+        <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">
           {marketingNav.map((item) => (
             <Link
               key={item.href}
@@ -33,10 +30,10 @@ export function MarketingHeader() {
 
         <div className="hidden items-center gap-3 md:flex">
           <Button asChild variant="ghost">
-            <Link href="/login">Sign in</Link>
+            <Link href="/account">Account</Link>
           </Button>
           <Button asChild>
-            <Link href="/register">Get Started</Link>
+            <Link href="/#products">Get Started</Link>
           </Button>
         </div>
 
@@ -59,7 +56,10 @@ export function MarketingHeader() {
           open ? "block" : "hidden",
         )}
       >
-        <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-4" aria-label="Mobile">
+        <nav
+          className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-4"
+          aria-label="Mobile"
+        >
           {marketingNav.map((item) => (
             <Link
               key={item.href}
@@ -72,12 +72,12 @@ export function MarketingHeader() {
           ))}
           <div className="mt-3 flex flex-col gap-2">
             <Button asChild variant="outline">
-              <Link href="/login" onClick={() => setOpen(false)}>
-                Sign in
+              <Link href="/account" onClick={() => setOpen(false)}>
+                Account
               </Link>
             </Button>
             <Button asChild>
-              <Link href="/register" onClick={() => setOpen(false)}>
+              <Link href="/#products" onClick={() => setOpen(false)}>
                 Get Started
               </Link>
             </Button>

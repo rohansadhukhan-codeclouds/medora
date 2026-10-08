@@ -53,7 +53,7 @@ export function RegisterForm() {
     // TODO(security): Create account via BFF → AsterMD/identity provider.
     void _values;
     await new Promise((resolve) => setTimeout(resolve, 400));
-    router.push("/intake");
+    router.push("/account");
   }
 
   return (

@@ -10,8 +10,8 @@ export function MarketingFooter() {
         <div>
           <SiteLogo />
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            Convenient online access to licensed healthcare professionals.
-            Care decisions are made by providers after reviewing your information.
+            Convenient online access to licensed healthcare professionals. Care
+            decisions are made by providers after reviewing your information.
           </p>
         </div>
 
@@ -32,21 +32,30 @@ export function MarketingFooter() {
         </div>
 
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Patient</h2>
+          <h2 className="text-sm font-semibold text-foreground">Care journey</h2>
           <ul className="mt-4 space-y-2">
             <li>
-              <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground">
-                Sign in
+              <Link
+                href="/#products"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Get started
               </Link>
             </li>
             <li>
-              <Link href="/register" className="text-sm text-muted-foreground hover:text-foreground">
-                Create account
+              <Link
+                href="/status"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Treatment status
               </Link>
             </li>
             <li>
-              <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
-                Patient dashboard
+              <Link
+                href="/account"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Account
               </Link>
             </li>
           </ul>
@@ -56,12 +65,12 @@ export function MarketingFooter() {
       <div className="border-t border-border">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>
-            © 2026 {siteConfig.name}. For informational and care
-            coordination purposes.
+            © 2026 {siteConfig.name}. For informational and care coordination
+            purposes.
           </p>
           <p>
-            This site does not provide emergency care. If you have a medical emergency,
-            call 911.
+            This site does not provide emergency care. If you have a medical
+            emergency, call 911.
           </p>
         </div>
       </div>

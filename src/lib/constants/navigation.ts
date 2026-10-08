@@ -1,9 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  CalendarDays,
   ClipboardList,
+  CreditCard,
   LayoutDashboard,
   MessageSquare,
+  Package,
   Pill,
   UserRound,
 } from "lucide-react";
@@ -14,22 +15,33 @@ export type NavItem = {
   description?: string;
 };
 
-export type PatientNavItem = NavItem & {
+export type AccountNavItem = NavItem & {
   icon: LucideIcon;
 };
 
 export const marketingNav: NavItem[] = [
-  { title: "Treatments", href: "/treatments" },
+  { title: "Products", href: "/treatments" },
   { title: "How it works", href: "/how-it-works" },
   { title: "FAQ", href: "/faq" },
   { title: "About", href: "/about" },
 ];
 
-export const patientNav: PatientNavItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+/** Lightweight account area — secondary to the storefront funnel */
+export const accountNav: AccountNavItem[] = [
+  { title: "Overview", href: "/account", icon: LayoutDashboard },
+  { title: "My Treatment", href: "/account/treatment", icon: Pill },
+  { title: "Orders", href: "/account/orders", icon: Package },
+  { title: "Subscription", href: "/account/subscription", icon: CreditCard },
+  { title: "Messages", href: "/account/messages", icon: MessageSquare },
+  { title: "Profile", href: "/account/profile", icon: UserRound },
+];
+
+/** @deprecated Use accountNav — kept for any leftover patient layout imports */
+export const patientNav: AccountNavItem[] = [
+  { title: "Overview", href: "/account", icon: LayoutDashboard },
   { title: "Intake", href: "/intake", icon: ClipboardList },
-  { title: "Appointments", href: "/appointments", icon: CalendarDays },
-  { title: "Prescriptions", href: "/prescriptions", icon: Pill },
-  { title: "Messages", href: "/messages", icon: MessageSquare },
-  { title: "Profile", href: "/profile", icon: UserRound },
+  { title: "My Treatment", href: "/account/treatment", icon: Pill },
+  { title: "Orders", href: "/account/orders", icon: Package },
+  { title: "Messages", href: "/account/messages", icon: MessageSquare },
+  { title: "Profile", href: "/account/profile", icon: UserRound },
 ];

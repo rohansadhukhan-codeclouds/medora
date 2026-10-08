@@ -58,10 +58,36 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Variable | Public? | Purpose |
 |---|---|---|
+| `APP_ENV` | **No** | `dev` \| `prod` — switches which AsterMD credential set is used |
 | `NEXT_PUBLIC_APP_URL` | Yes | Canonical app URL for metadata/links |
-| `ASTERMD_BASE_URL` | **No** | AsterMD API base URL (server only) |
-| `ASTERMD_API_KEY` | **No** | AsterMD API key (server only) |
+| `ASTERMD_DEV_*` | **No** | Dev base URL, client id, secret, channel id, api key |
+| `ASTERMD_PROD_*` | **No** | Prod base URL, client id, secret, channel id, api key |
 | `ASTERMD_USE_MOCK` | **No** | `true` uses `MockAsterMdService` |
+
+`APP_ENV=dev` → `ASTERMD_DEV_*`  
+`APP_ENV=prod` → `ASTERMD_PROD_*`
+
+### AsterMD auth + channel (server-only)
+
+1. `POST {BASE_URL}/v1/auth/api-credentials/token` with `client_id` + `client_secret`
+2. JWT is stored in **server memory state** (`token-store`) — never sent to the browser
+3. Authenticated calls attach `Authorization: Bearer <token>`
+4. `GET {BASE_URL}/v1/sales/channels/detail/{CHANNEL_ID}` uses env channel id
+
+BFF routes:
+- `POST /api/astermd/auth/status` — warm token; returns `{ hasToken, expiresAt }` only
+- `GET /api/astermd/channel` — channel detail for the configured channel id
+
+### Global channel state (Zustand)
+
+On app load, `ChannelProvider` calls `/api/astermd/channel` and stores the full
+channel `data` object in Zustand (`src/stores/channel-store.ts`).
+
+```tsx
+import { useChannel } from "@/hooks/use-channel";
+
+const { channel, products, isReady, refetch } = useChannel();
+```
 
 Never expose AsterMD secrets with `NEXT_PUBLIC_*`.
 
@@ -86,7 +112,8 @@ Key files:
 ### Where to connect real AsterMD APIs
 
 1. Obtain official AsterMD API documentation.
-2. Set `ASTERMD_BASE_URL` + `ASTERMD_API_KEY`.
+2. Set `APP_ENV` (`dev` / `prod`) and matching credentials:
+   `ASTERMD_DEV_*` or `ASTERMD_PROD_*` (`BASE_URL`, `CLIENT_ID`, `CLIENT_SECRET`, `CHANNEL_ID`).
 3. Replace placeholder paths in `endpoints.ts`.
 4. Implement request/response mapping in `mappers.ts` + `real-service.ts`.
 5. Set `ASTERMD_USE_MOCK=false`.
