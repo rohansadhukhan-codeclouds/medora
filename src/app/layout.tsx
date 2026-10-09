@@ -4,6 +4,7 @@ import { buildMetadata } from "@/config/metadata";
 import { JourneyProvider } from "@/features/journey/context/journey-provider";
 import { ChannelProvider } from "@/providers/channel-provider";
 import { QueryProvider } from "@/providers/query-provider";
+import { SessionProvider } from "@/providers/session-provider";
 import "./globals.css";
 
 const medoraSans = Plus_Jakarta_Sans({
@@ -23,9 +24,11 @@ export default function RootLayout({
     <html lang="en" className={`${medoraSans.variable} h-full`}>
       <body className="min-h-full flex flex-col font-sans">
         <QueryProvider>
-          <ChannelProvider>
-            <JourneyProvider>{children}</JourneyProvider>
-          </ChannelProvider>
+          <SessionProvider>
+            <ChannelProvider>
+              <JourneyProvider>{children}</JourneyProvider>
+            </ChannelProvider>
+          </SessionProvider>
         </QueryProvider>
       </body>
     </html>

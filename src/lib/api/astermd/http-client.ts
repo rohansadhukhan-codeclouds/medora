@@ -11,6 +11,8 @@ type AsterMdRequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   body?: unknown;
+  /** Extra headers (e.g. X-Original-Client-Ip). Never pass Authorization here. */
+  headers?: Record<string, string>;
   /** Skip Authorization header (only for the token endpoint). */
   skipAuth?: boolean;
   /** Internal: already retried after 401 refresh */
@@ -85,7 +87,12 @@ async function executeAsterMdRequest<T>(
   const url = `${resolveBaseUrl(config.baseUrl)}${options.path}`;
   const headers: Record<string, string> = {
     Accept: "application/json",
+    ...options.headers,
   };
+
+  // Authorization from the token gate always wins over caller headers.
+  delete headers.Authorization;
+  delete headers.authorization;
 
   if (options.body !== undefined) {
     headers["Content-Type"] = "application/json";

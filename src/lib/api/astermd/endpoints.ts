@@ -6,6 +6,8 @@ export const ASTERMD_ENDPOINTS = {
   authToken: "/v1/auth/api-credentials/token",
   channelDetail: (channelId: string) =>
     `/v1/sales/channels/detail/${encodeURIComponent(channelId)}`,
+  sessionsCreate: "/v1/sales/sessions/create",
+  sessionsView: "/v1/sales/sessions/view",
 
   // Remaining domain paths stay placeholders until wired from docs/SDK.
   patients: "/v1/sales/patients",

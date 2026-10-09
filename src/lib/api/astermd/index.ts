@@ -16,11 +16,22 @@ export {
   clearCachedChannel,
 } from "@/lib/api/astermd/channel-cache";
 export { asterMdFetch } from "@/lib/api/astermd/http-client";
+export {
+  createSalesSession,
+  viewSalesSession,
+  viewSalesSessions,
+} from "@/lib/api/astermd/sessions";
 export type { AsterMdService } from "@/lib/api/astermd/service";
 export type {
   AsterMdChannelDetail,
   AsterMdChannelProduct,
   AsterMdChannelDetailApiResponse,
 } from "@/lib/api/astermd/channel-types";
+export type {
+  AsterMdSessionCreateApiResponse,
+  AsterMdSessionJourneyEvent,
+  AsterMdSessionViewEntry,
+  AsterMdSessionViewMap,
+} from "@/lib/api/astermd/session-types";
 export * from "@/lib/api/astermd/types";
 export * from "@/lib/api/astermd/errors";
