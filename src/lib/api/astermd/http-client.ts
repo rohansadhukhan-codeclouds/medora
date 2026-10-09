@@ -1,16 +1,17 @@
 import "server-only";
-import { getAsterMdConfig } from "@/lib/api/astermd/config";
 import {
   getAsterMdAccessToken,
   refreshAsterMdAccessToken,
 } from "@/lib/api/astermd/auth/token-manager";
+import { enqueueAuthenticatedCall } from "@/lib/api/astermd/auth/request-gate";
+import { getAsterMdConfig } from "@/lib/api/astermd/config";
 import { AsterMdError, normalizeAsterMdError } from "@/lib/api/astermd/errors";
 
 type AsterMdRequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   body?: unknown;
-  /** Skip Authorization header (only for token endpoint). */
+  /** Skip Authorization header (only for the token endpoint). */
   skipAuth?: boolean;
   /** Internal: already retried after 401 refresh */
   _retried?: boolean;
@@ -22,10 +23,45 @@ function resolveBaseUrl(baseUrl: string): string {
 
 /**
  * Authenticated AsterMD HTTP helper.
- * Attaches Bearer token from secure server-side token state.
+ * Data calls stay queued until POST /v1/auth/api-credentials/token has stored
+ * a usable access token. They are not sent while the token is missing,
+ * expired, or still being requested.
+ *
+ * Never caches response bodies — every call uses `cache: "no-store"`.
+ * The only AsterMD payload cache is channel detail via `channel-cache.ts`.
  */
 export async function asterMdFetch<T = unknown>(
   options: AsterMdRequestOptions,
+): Promise<T> {
+  if (options.skipAuth) {
+    return executeAsterMdRequest<T>(options);
+  }
+
+  return enqueueAuthenticatedCall(
+    (accessToken) => executeAuthorized<T>(options, accessToken),
+    getAsterMdAccessToken,
+  );
+}
+
+async function executeAuthorized<T>(
+  options: AsterMdRequestOptions,
+  accessToken: string,
+): Promise<T> {
+  try {
+    return await executeAsterMdRequest<T>(options, accessToken);
+  } catch (error) {
+    const normalized = normalizeAsterMdError(error);
+    if (normalized.status === 401 && !options._retried) {
+      const nextToken = await refreshAsterMdAccessToken();
+      return executeAsterMdRequest<T>({ ...options, _retried: true }, nextToken);
+    }
+    throw normalized;
+  }
+}
+
+async function executeAsterMdRequest<T>(
+  options: AsterMdRequestOptions,
+  accessToken?: string,
 ): Promise<T> {
   const config = getAsterMdConfig();
 
@@ -38,6 +74,14 @@ export async function asterMdFetch<T = unknown>(
     });
   }
 
+  if (!options.skipAuth && !accessToken) {
+    throw new AsterMdError({
+      code: "unauthorized",
+      message: "AsterMD request blocked because no access token is stored",
+      userMessage: "Unable to authenticate with the care partner.",
+    });
+  }
+
   const url = `${resolveBaseUrl(config.baseUrl)}${options.path}`;
   const headers: Record<string, string> = {
     Accept: "application/json",
@@ -47,9 +91,8 @@ export async function asterMdFetch<T = unknown>(
     headers["Content-Type"] = "application/json";
   }
 
-  if (!options.skipAuth) {
-    const token = await getAsterMdAccessToken();
-    headers.Authorization = `Bearer ${token}`;
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
   }
 
   const controller = new AbortController();
@@ -63,11 +106,6 @@ export async function asterMdFetch<T = unknown>(
       signal: controller.signal,
       cache: "no-store",
     });
-
-    if (response.status === 401 && !options.skipAuth && !options._retried) {
-      await refreshAsterMdAccessToken();
-      return asterMdFetch<T>({ ...options, _retried: true });
-    }
 
     const payload = (await response.json().catch(() => null)) as
       | (T & { message?: string; error?: string | { message?: string } })

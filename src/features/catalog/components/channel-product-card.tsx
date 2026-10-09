@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AddToCartButton } from "@/features/cart/components/add-to-cart-button";
 import type { CatalogProduct } from "@/features/catalog/lib/product-utils";
 import {
   getDisplayPrice,
@@ -68,9 +69,12 @@ export function ChannelProductCard({ product }: ChannelProductCardProps) {
         ) : (
           <p className="text-sm text-muted-foreground">Pricing shown after review</p>
         )}
-        <Button asChild className="w-full">
-          <Link href={href}>View details</Link>
-        </Button>
+        <div className="flex flex-col gap-2">
+          <AddToCartButton product={product} className="w-full" />
+          <Button asChild variant="outline" className="w-full">
+            <Link href={href}>View details</Link>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

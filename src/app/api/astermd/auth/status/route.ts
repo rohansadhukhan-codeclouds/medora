@@ -15,27 +15,36 @@ export async function POST() {
   try {
     const config = getAsterMdConfig();
     if (config.useMock) {
-      return NextResponse.json({
-        ok: true,
-        mock: true,
-        hasToken: false,
-        message: "Mock mode enabled — live token exchange is skipped.",
-      });
+      return NextResponse.json(
+        {
+          ok: true,
+          mock: true,
+          hasToken: false,
+          message: "Mock mode enabled — live token exchange is skipped.",
+        },
+        { headers: { "Cache-Control": "private, no-store" } },
+      );
     }
 
     await acquireAsterMdToken();
     const snapshot = getTokenCacheSnapshot();
-    return NextResponse.json({
-      ok: true,
-      hasToken: snapshot.hasToken,
-      expiresAt: snapshot.expiresAt,
-      cachedAt: snapshot.cachedAt,
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        hasToken: snapshot.hasToken,
+        expiresAt: snapshot.expiresAt,
+        cachedAt: snapshot.cachedAt,
+      },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
   } catch (error) {
     const normalized = normalizeAsterMdError(error);
     return NextResponse.json(
       { ok: false, error: getUserFacingMessage(normalized) },
-      { status: normalized.status },
+      {
+        status: normalized.status,
+        headers: { "Cache-Control": "private, no-store" },
+      },
     );
   }
 }
@@ -44,28 +53,37 @@ export async function GET() {
   try {
     const config = getAsterMdConfig();
     if (config.useMock) {
-      return NextResponse.json({
-        ok: true,
-        mock: true,
-        hasToken: false,
-        message: "Mock mode enabled — live token exchange is skipped.",
-      });
+      return NextResponse.json(
+        {
+          ok: true,
+          mock: true,
+          hasToken: false,
+          message: "Mock mode enabled — live token exchange is skipped.",
+        },
+        { headers: { "Cache-Control": "private, no-store" } },
+      );
     }
 
     // Warm/refresh token if needed, still without exposing it
     await getAsterMdAccessToken();
     const snapshot = getTokenCacheSnapshot();
-    return NextResponse.json({
-      ok: true,
-      hasToken: snapshot.hasToken,
-      expiresAt: snapshot.expiresAt,
-      cachedAt: snapshot.cachedAt,
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        hasToken: snapshot.hasToken,
+        expiresAt: snapshot.expiresAt,
+        cachedAt: snapshot.cachedAt,
+      },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
   } catch (error) {
     const normalized = normalizeAsterMdError(error);
     return NextResponse.json(
       { ok: false, error: getUserFacingMessage(normalized) },
-      { status: normalized.status },
+      {
+        status: normalized.status,
+        headers: { "Cache-Control": "private, no-store" },
+      },
     );
   }
 }

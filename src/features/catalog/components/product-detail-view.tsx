@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AddToCartButton } from "@/features/cart/components/add-to-cart-button";
 import {
   findCatalogProduct,
   formatProductPrice,
@@ -143,7 +144,8 @@ export function ProductDetailView({ productId }: ProductDetailViewProps) {
           </dl>
 
           <div className="flex flex-wrap gap-3">
-            <Button asChild>
+            <AddToCartButton product={product} />
+            <Button asChild variant="outline">
               <Link href="/eligibility">Start assessment</Link>
             </Button>
             <Button asChild variant="outline">

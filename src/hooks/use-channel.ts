@@ -12,19 +12,31 @@ import {
  * Use shallow snapshot + stable empty products to avoid SSR infinite loops.
  */
 export function useChannel() {
-  const { channel, status, error, lastFetchedAt, fetchChannel, clearChannel } =
-    useChannelStore(
-      useShallow((state) => ({
-        channel: state.channel,
-        status: state.status,
-        error: state.error,
-        lastFetchedAt: state.lastFetchedAt,
-        fetchChannel: state.fetchChannel,
-        clearChannel: state.clearChannel,
-      })),
-    );
+  const {
+    channel,
+    status,
+    error,
+    lastFetchedAt,
+    expiresAt,
+    fetchChannel,
+    clearChannel,
+  } = useChannelStore(
+    useShallow((state) => ({
+      channel: state.channel,
+      status: state.status,
+      error: state.error,
+      lastFetchedAt: state.lastFetchedAt,
+      expiresAt: state.expiresAt,
+      fetchChannel: state.fetchChannel,
+      clearChannel: state.clearChannel,
+    })),
+  );
 
   const products = channel?.products ?? EMPTY_CHANNEL_PRODUCTS;
+  const cacheFresh =
+    Boolean(channel?._id) &&
+    typeof expiresAt === "number" &&
+    Date.now() < expiresAt;
 
   const refetch = useCallback(
     () => fetchChannel({ force: true }),
@@ -37,7 +49,10 @@ export function useChannel() {
     status,
     error,
     lastFetchedAt,
-    isLoading: status === "loading" || status === "idle",
+    expiresAt,
+    cacheFresh,
+    isLoading:
+      (status === "loading" || status === "idle") && !cacheFresh,
     isReady: status === "success" && Boolean(channel),
     refetch,
     clearChannel,

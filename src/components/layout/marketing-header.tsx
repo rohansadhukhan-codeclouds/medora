@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { SiteLogo } from "@/components/layout/site-logo";
 import { Button } from "@/components/ui/button";
+import { HeaderCartButton } from "@/features/cart/components/header-cart-button";
 import { marketingNav } from "@/lib/constants/navigation";
 import { cn } from "@/lib/utils/cn";
 
@@ -28,25 +29,26 @@ export function MarketingHeader() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
-          <Button asChild variant="ghost">
-            <Link href="/account">Account</Link>
-          </Button>
+        <div className="hidden items-center gap-2 md:flex">
+          <HeaderCartButton />
           <Button asChild>
             <Link href="/#products">Get Started</Link>
           </Button>
         </div>
 
-        <button
-          type="button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border md:hidden"
-          aria-expanded={open}
-          aria-controls="mobile-nav"
-          aria-label={open ? "Close menu" : "Open menu"}
-          onClick={() => setOpen((value) => !value)}
-        >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <HeaderCartButton />
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border"
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            aria-label={open ? "Close menu" : "Open menu"}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       <div
@@ -72,8 +74,8 @@ export function MarketingHeader() {
           ))}
           <div className="mt-3 flex flex-col gap-2">
             <Button asChild variant="outline">
-              <Link href="/account" onClick={() => setOpen(false)}>
-                Account
+              <Link href="/cart" onClick={() => setOpen(false)}>
+                Cart
               </Link>
             </Button>
             <Button asChild>

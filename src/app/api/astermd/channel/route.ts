@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
-import { getChannelDetail } from "@/lib/api/astermd/channels";
+import { NextRequest, NextResponse } from "next/server";
+import { getChannelDetailWithMeta } from "@/lib/api/astermd/channels";
 import { getAsterMdConfig } from "@/lib/api/astermd/config";
 import { getUserFacingMessage, normalizeAsterMdError } from "@/lib/api/astermd/errors";
 
 /**
  * BFF: fetch AsterMD channel detail using env channel id + server-side token.
- * Returns full channel `data` for Zustand hydration.
+ * Responses are served from a 1-day server cache unless `?force=1`.
  * Never returns client_secret or access_token to the browser.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const config = getAsterMdConfig();
 
@@ -26,7 +26,12 @@ export async function GET() {
       );
     }
 
-    const payload = await getChannelDetail();
+    const force =
+      request.nextUrl.searchParams.get("force") === "1" ||
+      request.nextUrl.searchParams.get("force") === "true";
+
+    const { payload, cacheHit, cachedAt, expiresAt } =
+      await getChannelDetailWithMeta(undefined, { force });
     const data = payload.data;
 
     if (!data || typeof data !== "object" || !("_id" in data) || !data._id) {
@@ -45,12 +50,23 @@ export async function GET() {
       typeof payload.message === "string" &&
       payload.message.toLowerCase().includes("mock");
 
-    return NextResponse.json({
-      success: payload.success ?? true,
-      message: payload.message ?? "Request successful",
-      source: isMockFallback ? "mock" : "live",
-      data,
+    // HTTP itself is no-store; the 1-day TTL lives only in channel-cache.ts
+    // so browsers/CDNs do not treat this like a generic cacheable API.
+    const headers = new Headers({
+      "Cache-Control": "private, no-store",
     });
+
+    return NextResponse.json(
+      {
+        success: payload.success ?? true,
+        message: payload.message ?? "Request successful",
+        source: isMockFallback ? "mock" : cacheHit ? "cache" : "live",
+        cachedAt: cachedAt ? new Date(cachedAt).toISOString() : null,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        data,
+      },
+      { headers },
+    );
   } catch (error) {
     const normalized = normalizeAsterMdError(error);
     console.error("[AsterMD] channel route error", normalized.code, normalized.status);
