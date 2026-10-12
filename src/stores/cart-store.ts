@@ -132,13 +132,9 @@ export const useCartStore = create<CartStoreState>()(
 
       syncToAsterMd: async () => {
         const items = get().items;
-        if (items.length === 0) {
-          set({ syncStatus: "idle", syncError: null });
-          return true;
-        }
-
         set({ syncStatus: "syncing", syncError: null });
         try {
+          // Empty list is intentional (clear / remove last item) → PUT update.
           const result = await postCartSync(items);
           if (!result.ok) {
             set({
@@ -148,7 +144,7 @@ export const useCartStore = create<CartStoreState>()(
             return false;
           }
           set({
-            syncStatus: "synced",
+            syncStatus: items.length > 0 ? "synced" : "idle",
             syncError: null,
             remoteCartId: result.cartId ?? get().remoteCartId,
           });
@@ -243,21 +239,12 @@ export const useCartStore = create<CartStoreState>()(
       removeItem: async (productId) => {
         const next = get().items.filter((entry) => entry.id !== productId);
         set({ items: next });
-
-        if (next.length === 0) {
-          set({ syncStatus: "idle", syncError: null });
-          return;
-        }
-
         await get().syncToAsterMd();
       },
 
       clearCart: async () => {
-        set({
-          items: [],
-          syncStatus: "idle",
-          syncError: null,
-        });
+        set({ items: [], syncError: null });
+        await get().syncToAsterMd();
       },
     }),
     {

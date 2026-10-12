@@ -182,17 +182,22 @@ export async function syncSalesCart(input: {
   const existing = await viewSalesCart(input.sessionId);
 
   if (!existing) {
+    // Nothing to clear remotely; empty sync is a no-op when no cart exists.
     if (input.items.length === 0) {
-      throw new AsterMdError({
-        code: "validation_error",
-        message: "Cannot create an empty AsterMD cart",
-        userMessage: "Add a product to your cart first.",
-      });
+      return {
+        cart: {
+          session: input.sessionId,
+          items: [],
+          status: "initiated",
+        },
+        created: false,
+      };
     }
     const cart = await createSalesCart(input);
     return { cart, created: true };
   }
 
+  // Existing cart — update with full list (including empty to clear).
   const cart = await updateSalesCart(input);
   return { cart, created: false };
 }

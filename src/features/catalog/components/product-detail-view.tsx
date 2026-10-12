@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { LiveBreadcrumb } from "@/components/shared/live-breadcrumb";
+import { PageHeader } from "@/components/shared/page-header";
 import { ProductImage } from "@/components/shared/product-image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ export function ProductDetailView({ productId }: ProductDetailViewProps) {
   if (isLoading && !isReady) {
     return (
       <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-16 sm:px-6" aria-busy="true">
+        <Skeleton className="h-4 w-48" />
         <Skeleton className="h-10 w-64" />
         <div className="grid gap-8 lg:grid-cols-2">
           <Skeleton className="aspect-square w-full rounded-xl" />
@@ -49,7 +50,8 @@ export function ProductDetailView({ productId }: ProductDetailViewProps) {
 
   if (!product) {
     return (
-      <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-16 sm:px-6">
+        <LiveBreadcrumb currentLabel="Product not found" />
         <EmptyState
           title="Product not found"
           description={
@@ -57,14 +59,9 @@ export function ProductDetailView({ productId }: ProductDetailViewProps) {
             "This product is not available in the current channel catalog."
           }
           action={
-            <div className="flex flex-wrap gap-3">
-              <Button type="button" variant="outline" onClick={() => void refetch()}>
-                Refresh
-              </Button>
-              <Button asChild>
-                <Link href="/">Back to products</Link>
-              </Button>
-            </div>
+            <Button type="button" variant="outline" onClick={() => void refetch()}>
+              Refresh
+            </Button>
           }
         />
       </div>
@@ -76,14 +73,11 @@ export function ProductDetailView({ productId }: ProductDetailViewProps) {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-16 sm:px-6">
+      <LiveBreadcrumb currentLabel={product.name} />
+
       <PageHeader
         title={product.name}
         description={product.descriptionShort}
-        actions={
-          <Button asChild variant="outline">
-            <Link href="/#products">All products</Link>
-          </Button>
-        }
       />
 
       <div className="grid gap-8 lg:grid-cols-2">
@@ -138,12 +132,6 @@ export function ProductDetailView({ productId }: ProductDetailViewProps) {
 
           <div className="flex flex-wrap gap-3">
             <AddToCartButton product={product} />
-            <Button asChild variant="outline">
-              <Link href="/eligibility">Start assessment</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/#products">Back to products</Link>
-            </Button>
           </div>
 
           <p className="text-xs text-muted-foreground">

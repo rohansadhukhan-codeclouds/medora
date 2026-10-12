@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { recordNavPath } from "@/lib/navigation/nav-history";
 import { useSessionStore } from "@/stores/session-store";
 
 /**
@@ -13,6 +14,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const ensureSession = useSessionStore((state) => state.ensureSession);
   const refreshJourney = useSessionStore((state) => state.refreshJourney);
+
+  useEffect(() => {
+    recordNavPath(pathname);
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;

@@ -137,9 +137,9 @@ Do not rename route groups or replace working BFF patterns without an explicit r
 ## Cart — CURRENT (create/update/view wired)
 
 - Local Zustand cart (`cart-store`) — add/remove, qty always `1` (no quantity selector)
-- On add/remove: BFF `POST /api/astermd/cart` syncs to AsterMD
+- On add/remove/clear: BFF `POST /api/astermd/cart` syncs to AsterMD
   - No remote cart yet → `POST /v1/sales/carts/create` with `{ session, items }` (never send `channel_id`)
-  - Existing cart → `PUT /v1/sales/carts/update/{sessionUuid}` with `{ items }` only
+  - Existing cart → `PUT /v1/sales/carts/update/{sessionUuid}` with `{ items }` only (empty `items` clears the cart)
   - View → `GET /v1/sales/carts/view/{sessionUuid}` via `GET /api/astermd/cart`
 - Path `:id` for update/view is the **session UUID**, not the cart document `_id`
 - Session must exist first (`SessionProvider` / ensure on sync)
