@@ -22,9 +22,18 @@ export function buildMetadata({
   return {
     title: pageTitle,
     description,
+    applicationName: siteConfig.name,
     metadataBase: new URL(siteConfig.url),
     alternates: {
       canonical: path,
+    },
+    icons: {
+      icon: [
+        { url: "/favicon.svg", type: "image/svg+xml" },
+        { url: "/icon", type: "image/png", sizes: "32x32" },
+      ],
+      apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+      shortcut: ["/icon"],
     },
     openGraph: {
       title: pageTitle,
