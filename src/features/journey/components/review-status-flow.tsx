@@ -156,8 +156,8 @@ export function ReviewStatusFlow() {
       <Button type="button" variant="outline" onClick={() => router.push("/status")}>
         Open full status page
       </Button>
-      <Button type="button" onClick={() => router.push("/account")}>
-        Go to account
+      <Button type="button" onClick={() => router.push("/")}>
+        Back to home
       </Button>
     </div>
   );

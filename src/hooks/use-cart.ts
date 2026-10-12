@@ -10,13 +10,29 @@ import {
 } from "@/stores/cart-store";
 
 export function useCart() {
-  const { items, addItem, removeItem, clearCart, hasItem } = useCartStore(
+  const {
+    items,
+    addItem,
+    removeItem,
+    clearCart,
+    hasItem,
+    syncStatus,
+    syncError,
+    remoteCartId,
+    syncToAsterMd,
+    refreshFromAsterMd,
+  } = useCartStore(
     useShallow((state) => ({
       items: state.items,
       addItem: state.addItem,
       removeItem: state.removeItem,
       clearCart: state.clearCart,
       hasItem: state.hasItem,
+      syncStatus: state.syncStatus,
+      syncError: state.syncError,
+      remoteCartId: state.remoteCartId,
+      syncToAsterMd: state.syncToAsterMd,
+      refreshFromAsterMd: state.refreshFromAsterMd,
     })),
   );
 
@@ -24,12 +40,12 @@ export function useCart() {
   const totalCents = useCartStore(selectCartTotalCents);
 
   const toggleItem = useCallback(
-    (item: CartItem) => {
+    async (item: CartItem) => {
       if (hasItem(item.id)) {
-        removeItem(item.id);
+        await removeItem(item.id);
         return;
       }
-      addItem(item);
+      await addItem(item);
     },
     [addItem, hasItem, removeItem],
   );
@@ -43,6 +59,12 @@ export function useCart() {
     clearCart,
     hasItem,
     toggleItem,
+    syncStatus,
+    syncError,
+    remoteCartId,
+    syncToAsterMd,
+    refreshFromAsterMd,
+    isSyncing: syncStatus === "syncing",
     isEmpty: items.length === 0,
   };
 }

@@ -52,10 +52,10 @@ export function MarketingFooter() {
             </li>
             <li>
               <Link
-                href="/account"
+                href="/cart"
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
-                Account
+                Cart
               </Link>
             </li>
           </ul>

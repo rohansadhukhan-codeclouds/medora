@@ -21,7 +21,18 @@ export {
   viewSalesSession,
   viewSalesSessions,
 } from "@/lib/api/astermd/sessions";
+export {
+  createSalesCart,
+  updateSalesCart,
+  viewSalesCart,
+  syncSalesCart,
+} from "@/lib/api/astermd/carts";
 export type { AsterMdService } from "@/lib/api/astermd/service";
+export type {
+  AsterMdCartApiResponse,
+  AsterMdCartLine,
+  AsterMdCartRecord,
+} from "@/lib/api/astermd/cart-types";
 export type {
   AsterMdChannelDetail,
   AsterMdChannelProduct,

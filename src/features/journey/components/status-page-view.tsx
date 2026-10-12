@@ -53,7 +53,7 @@ export function StatusPageView() {
           <Link href="/review">Open review controls</Link>
         </Button>
         <Button asChild variant="outline">
-          <Link href="/account">Account overview</Link>
+          <Link href="/">Back to home</Link>
         </Button>
       </div>
     </div>

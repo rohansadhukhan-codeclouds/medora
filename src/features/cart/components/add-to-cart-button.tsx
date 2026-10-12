@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, ShoppingBag } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Check, Loader2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { catalogProductToCartItem } from "@/features/cart/lib/cart-product";
 import type { CatalogProduct } from "@/features/catalog/lib/product-utils";
@@ -18,34 +19,56 @@ export function AddToCartButton({
   className,
   size = "default",
 }: AddToCartButtonProps) {
-  const { hasItem, addItem, removeItem } = useCart();
+  const { hasItem, addItem, removeItem, syncError } = useCart();
   const inCart = hasItem(product.id);
+  const [isPending, startTransition] = useTransition();
+  const [localError, setLocalError] = useState<string | null>(null);
 
   return (
-    <Button
-      type="button"
-      size={size}
-      variant={inCart ? "outline" : "default"}
-      className={cn(className)}
-      onClick={() => {
-        if (inCart) {
-          removeItem(product.id);
-          return;
-        }
-        addItem(catalogProductToCartItem(product));
-      }}
-    >
-      {inCart ? (
-        <>
-          <Check className="h-4 w-4" aria-hidden="true" />
-          In cart — remove
-        </>
-      ) : (
-        <>
-          <ShoppingBag className="h-4 w-4" aria-hidden="true" />
-          Add to cart
-        </>
-      )}
-    </Button>
+    <div className={cn("flex w-full flex-col gap-1", className)}>
+      <Button
+        type="button"
+        size={size}
+        variant={inCart ? "outline" : "default"}
+        className="w-full"
+        disabled={isPending}
+        onClick={() => {
+          setLocalError(null);
+          startTransition(async () => {
+            try {
+              if (inCart) {
+                await removeItem(product.id);
+                return;
+              }
+              await addItem(catalogProductToCartItem(product));
+            } catch {
+              setLocalError("Could not update cart. Please try again.");
+            }
+          });
+        }}
+      >
+        {isPending ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            Updating…
+          </>
+        ) : inCart ? (
+          <>
+            <Check className="h-4 w-4" aria-hidden="true" />
+            In cart — remove
+          </>
+        ) : (
+          <>
+            <ShoppingBag className="h-4 w-4" aria-hidden="true" />
+            Add to cart
+          </>
+        )}
+      </Button>
+      {localError || syncError ? (
+        <p className="text-xs text-destructive" role="status">
+          {localError ?? syncError}
+        </p>
+      ) : null}
+    </div>
   );
 }

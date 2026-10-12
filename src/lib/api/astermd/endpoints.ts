@@ -8,6 +8,11 @@ export const ASTERMD_ENDPOINTS = {
     `/v1/sales/channels/detail/${encodeURIComponent(channelId)}`,
   sessionsCreate: "/v1/sales/sessions/create",
   sessionsView: "/v1/sales/sessions/view",
+  cartsCreate: "/v1/sales/carts/create",
+  cartsUpdate: (sessionId: string) =>
+    `/v1/sales/carts/update/${encodeURIComponent(sessionId)}`,
+  cartsView: (sessionId: string) =>
+    `/v1/sales/carts/view/${encodeURIComponent(sessionId)}`,
 
   // Remaining domain paths stay placeholders until wired from docs/SDK.
   patients: "/v1/sales/patients",

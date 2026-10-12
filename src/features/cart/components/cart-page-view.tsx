@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useTransition } from "react";
 import { ShoppingBag, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
@@ -10,8 +11,22 @@ import { formatProductPrice, getProductImageUrl } from "@/features/catalog/lib/p
 import { useCart } from "@/hooks/use-cart";
 
 export function CartPageView() {
-  const { items, isEmpty, removeItem, clearCart, totalCents } = useCart();
+  const {
+    items,
+    isEmpty,
+    removeItem,
+    clearCart,
+    totalCents,
+    syncError,
+    isSyncing,
+    refreshFromAsterMd,
+  } = useCart();
   const totalLabel = formatProductPrice(totalCents);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    void refreshFromAsterMd();
+  }, [refreshFromAsterMd]);
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-16 sm:px-6">
@@ -20,12 +35,27 @@ export function CartPageView() {
         description="Selected treatments stay in your cart until you continue or remove them."
         actions={
           !isEmpty ? (
-            <Button type="button" variant="outline" onClick={() => clearCart()}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending || isSyncing}
+              onClick={() => {
+                startTransition(async () => {
+                  await clearCart();
+                });
+              }}
+            >
               Clear cart
             </Button>
           ) : null
         }
       />
+
+      {syncError ? (
+        <p className="rounded-lg border border-destructive/20 bg-destructive-muted px-4 py-3 text-sm text-destructive" role="alert">
+          {syncError}
+        </p>
+      ) : null}
 
       {isEmpty ? (
         <EmptyState
@@ -74,8 +104,13 @@ export function CartPageView() {
                     type="button"
                     variant="ghost"
                     size="sm"
+                    disabled={isPending || isSyncing}
                     className="self-start text-destructive hover:bg-destructive-muted hover:text-destructive sm:self-center"
-                    onClick={() => removeItem(item.id)}
+                    onClick={() => {
+                      startTransition(async () => {
+                        await removeItem(item.id);
+                      });
+                    }}
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                     Remove
@@ -89,6 +124,7 @@ export function CartPageView() {
             <div>
               <p className="text-sm text-muted-foreground">
                 {items.length} {items.length === 1 ? "item" : "items"}
+                {isSyncing ? " · syncing…" : null}
               </p>
               {totalLabel ? (
                 <p className="mt-1 text-xl font-semibold text-foreground">

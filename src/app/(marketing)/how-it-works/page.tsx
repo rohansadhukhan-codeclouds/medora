@@ -61,7 +61,7 @@ export default function HowItWorksPage() {
       </ol>
       <div className="mt-12">
         <Button asChild>
-          <Link href="/register">Begin your intake</Link>
+          <Link href="/eligibility">Begin your intake</Link>
         </Button>
       </div>
     </div>

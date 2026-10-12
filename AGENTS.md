@@ -134,11 +134,15 @@ Do not rename route groups or replace working BFF patterns without an explicit r
 - Optional `X-Original-Client-Ip` from trusted proxy headers only — do not trust browser-supplied IPs blindly
 - **PENDING:** exact AsterMD session expiry / resume semantics (do not invent a duration)
 
-## Cart — GAP / PENDING
+## Cart — CURRENT (create/update/view wired)
 
-- **CURRENT (UI only):** local Zustand cart (`cart-store`) — add/remove, no quantity selector, not synced to AsterMD
-- **GAP:** AsterMD cart create/update APIs bound to the same sales session
-- Cart conceptually belongs to the AsterMD session/journey once integrated
+- Local Zustand cart (`cart-store`) — add/remove, qty always `1` (no quantity selector)
+- On add/remove: BFF `POST /api/astermd/cart` syncs to AsterMD
+  - No remote cart yet → `POST /v1/sales/carts/create` with `{ session, items }` (never send `channel_id`)
+  - Existing cart → `POST /v1/sales/carts/update/{sessionUuid}` with `{ items }` only
+  - View → `GET /v1/sales/carts/view/{sessionUuid}` via `GET /api/astermd/cart`
+- Path `:id` for update/view is the **session UUID**, not the cart document `_id`
+- Session must exist first (`SessionProvider` / ensure on sync)
 
 ## Checkout — GAP / PENDING
 
@@ -213,8 +217,8 @@ Product/channel mapping → Teleform/form id → schema/JSON id → schema retri
 | Product rendering | CURRENT | Channel products in storefront |
 | Session create / reuse | CURRENT | BFF + HttpOnly cookie + SessionProvider |
 | Session view / journey load | CURRENT | Via BFF GET; expiry semantics PENDING |
-| Local cart UI | CURRENT | Client-only; not AsterMD cart |
-| AsterMD cart API | GAP | Not wired |
+| Local cart UI | CURRENT | Zustand + qty=1 |
+| AsterMD cart create/update/view | CURRENT | BFF `/api/astermd/cart` |
 | Checkout (live) | GAP/PENDING | UI shells only |
 | Verification | GAP | Unconfigured / not end-to-end |
 | Teleform / intake (live) | PENDING | Schema-driven flow not complete |
@@ -301,8 +305,7 @@ Inferred from the repo:
 
 # Known Gaps / Open Questions
 
-1. AsterMD cart create/update tied to sales session — GAP  
-2. Checkout + payment + verified external order ID — GAP  
+1. Checkout + payment + verified external order ID — GAP  
 3. Verification provider configuration — GAP/PENDING  
 4. Teleform schema fetch → render → submit — PENDING  
 5. Opportunity create/update timing — PENDING  

@@ -12,9 +12,18 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      { source: "/dashboard", destination: "/account", permanent: false },
-      { source: "/portal", destination: "/account", permanent: false },
-      { source: "/portal/:path*", destination: "/account", permanent: false },
+      { source: "/dashboard", destination: "/", permanent: false },
+      { source: "/portal", destination: "/", permanent: false },
+      { source: "/portal/:path*", destination: "/", permanent: false },
+      // Keep /account/create (care-flow) — only redirect retired account pages.
+      { source: "/account", destination: "/", permanent: false },
+      { source: "/account/treatment", destination: "/", permanent: false },
+      { source: "/account/orders", destination: "/", permanent: false },
+      { source: "/account/subscription", destination: "/", permanent: false },
+      { source: "/account/messages", destination: "/", permanent: false },
+      { source: "/account/profile", destination: "/", permanent: false },
+      { source: "/login", destination: "/", permanent: false },
+      { source: "/register", destination: "/eligibility", permanent: false },
       { source: "/categories", destination: "/treatments", permanent: false },
       {
         source: "/categories/:slug",
@@ -29,10 +38,10 @@ const nextConfig: NextConfig = {
       },
       { source: "/medical-intake", destination: "/intake", permanent: false },
       { source: "/order", destination: "/status", permanent: false },
-      { source: "/appointments", destination: "/account", permanent: false },
-      { source: "/prescriptions", destination: "/account/treatment", permanent: false },
-      { source: "/messages", destination: "/account/messages", permanent: false },
-      { source: "/profile", destination: "/account/profile", permanent: false },
+      { source: "/appointments", destination: "/", permanent: false },
+      { source: "/prescriptions", destination: "/", permanent: false },
+      { source: "/messages", destination: "/", permanent: false },
+      { source: "/profile", destination: "/", permanent: false },
     ];
   },
   turbopack: {

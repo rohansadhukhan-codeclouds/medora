@@ -32,14 +32,6 @@ const CDN_BASE =
   process.env.NEXT_PUBLIC_ASTERMD_CDN_URL?.replace(/\/+$/, "") ??
   "https://cdn.astermd.com";
 
-export function slugify(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 export function getProductImageUrl(image?: string | null): string | null {
   if (!image) return null;
   if (image.startsWith("http://") || image.startsWith("https://")) {
@@ -135,61 +127,6 @@ export function findCatalogProduct(
         item.channelProductId === productId,
     ) ?? null
   );
-}
-
-export type CatalogCategory = {
-  id: string;
-  slug: string;
-  name: string;
-  productCount: number;
-};
-
-export function getCatalogCategories(
-  products: CatalogProduct[],
-): CatalogCategory[] {
-  const map = new Map<string, CatalogCategory>();
-
-  for (const product of products) {
-    const refs =
-      product.categories.length > 0
-        ? product.categories
-        : product.conditions.length > 0
-          ? product.conditions
-          : [{ _id: "uncategorized", name: "General" }];
-
-    for (const ref of refs) {
-      const name = ref.name?.trim() || "General";
-      const id = ref._id || slugify(name);
-      const slug = slugify(name) || id;
-      const existing = map.get(slug);
-      if (existing) {
-        existing.productCount += 1;
-      } else {
-        map.set(slug, { id, slug, name, productCount: 1 });
-      }
-    }
-  }
-
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
-}
-
-export function getProductsForCategory(
-  products: CatalogProduct[],
-  categorySlug: string,
-): CatalogProduct[] {
-  return products.filter((product) => {
-    const refs = [
-      ...product.categories,
-      ...product.conditions,
-    ];
-    if (refs.length === 0 && categorySlug === "general") {
-      return true;
-    }
-    return refs.some((ref) => {
-      const name = ref.name?.trim() || "General";
-      return slugify(name) === categorySlug || ref._id === categorySlug;
-    });
-  });
 }
 
 export function getDisplayPrice(product: CatalogProduct): string | null {
