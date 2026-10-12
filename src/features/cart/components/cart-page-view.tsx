@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useTransition } from "react";
-import { ShoppingBag, Trash2 } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { Loader2, ShoppingBag, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { ProductImage } from "@/components/shared/product-image";
@@ -23,10 +23,20 @@ export function CartPageView() {
   } = useCart();
   const totalLabel = formatProductPrice(totalCents);
   const [isPending, startTransition] = useTransition();
+  const [hasLoadedView, setHasLoadedView] = useState(false);
 
   useEffect(() => {
-    void refreshFromAsterMd();
+    let cancelled = false;
+    void (async () => {
+      await refreshFromAsterMd();
+      if (!cancelled) setHasLoadedView(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [refreshFromAsterMd]);
+
+  const showLoading = !hasLoadedView && isSyncing;
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-16 sm:px-6">
@@ -57,7 +67,12 @@ export function CartPageView() {
         </p>
       ) : null}
 
-      {isEmpty ? (
+      {showLoading ? (
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-16 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          Loading cart…
+        </div>
+      ) : isEmpty ? (
         <EmptyState
           icon={ShoppingBag}
           title="Your cart is empty"

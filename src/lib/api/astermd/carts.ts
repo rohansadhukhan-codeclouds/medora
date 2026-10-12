@@ -125,9 +125,9 @@ export async function updateSalesCart(input: {
 
   const body: UpdateAsterMdCartBody = { items };
 
-  // Path verb style (/update/...) — POST matches AsterMD create-style mutations.
+  // AsterMD cart update is PUT /v1/sales/carts/update/{sessionUuid}.
   const payload = await asterMdFetch<AsterMdCartApiResponse>({
-    method: "POST",
+    method: "PUT",
     path: ASTERMD_ENDPOINTS.cartsUpdate(sessionId),
     body,
   });

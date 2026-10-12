@@ -44,6 +44,41 @@ async function ensureSessionId(): Promise<string | null> {
   return useSessionStore.getState().ensureSession();
 }
 
+type RemoteCartLine = {
+  product_id?: string;
+  name?: string;
+  qty?: number;
+};
+
+/** Map AsterMD view lines onto CartItem, keeping local image/price when ids match. */
+function mapRemoteItemsToCart(
+  remoteItems: RemoteCartLine[],
+  existing: CartItem[],
+): CartItem[] {
+  const byId = new Map(existing.map((item) => [item.id, item]));
+  const seen = new Set<string>();
+  const next: CartItem[] = [];
+
+  for (const line of remoteItems) {
+    const id = String(line.product_id ?? "").trim();
+    const name = String(line.name ?? "").trim();
+    if (!id || !name || seen.has(id)) continue;
+    seen.add(id);
+
+    const prev = byId.get(id);
+    next.push({
+      id,
+      name,
+      image: prev?.image,
+      priceCents: prev?.priceCents ?? null,
+      priceLabel: prev?.priceLabel ?? null,
+      href: prev?.href ?? `/catalog/${encodeURIComponent(id)}`,
+    });
+  }
+
+  return next;
+}
+
 async function postCartSync(items: CartItem[]): Promise<{
   ok: boolean;
   cartId?: string | null;
@@ -80,6 +115,9 @@ async function postCartSync(items: CartItem[]): Promise<{
 
   return { ok: true, cartId: payload.cartId ?? null };
 }
+
+/** Dedupes Strict Mode / double-mount view fetches in development. */
+let refreshInFlight: Promise<void> | null = null;
 
 export const useCartStore = create<CartStoreState>()(
   persist(
@@ -125,34 +163,72 @@ export const useCartStore = create<CartStoreState>()(
       },
 
       refreshFromAsterMd: async () => {
-        try {
-          await ensureSessionId();
-          const response = await fetch("/api/astermd/cart", {
-            method: "GET",
-            headers: { Accept: "application/json" },
-            cache: "no-store",
-            credentials: "same-origin",
-          });
-          const payload = (await response.json()) as {
-            ok?: boolean;
-            data?: {
-              _id?: string;
-              items?: Array<{ product_id?: string; name?: string; qty?: number }>;
-            } | null;
-          };
-
-          if (!response.ok || !payload.ok || !payload.data) {
-            return;
-          }
-
-          set({
-            remoteCartId: payload.data._id ?? null,
-            syncStatus: "synced",
-            syncError: null,
-          });
-        } catch {
-          // View is optional — keep local cart.
+        if (refreshInFlight) {
+          await refreshInFlight;
+          return;
         }
+
+        refreshInFlight = (async () => {
+          set({ syncStatus: "syncing", syncError: null });
+          try {
+            await ensureSessionId();
+            const response = await fetch("/api/astermd/cart", {
+              method: "GET",
+              headers: { Accept: "application/json" },
+              cache: "no-store",
+              credentials: "same-origin",
+            });
+            const payload = (await response.json()) as {
+              ok?: boolean;
+              error?: string;
+              data?: {
+                _id?: string;
+                items?: RemoteCartLine[];
+              } | null;
+            };
+
+            if (!response.ok || !payload.ok) {
+              set({
+                syncStatus: "error",
+                syncError:
+                  payload.error ?? "Unable to load cart from care partner.",
+              });
+              return;
+            }
+
+            // No remote cart yet — clear local so the page matches AsterMD view.
+            if (!payload.data) {
+              set({
+                items: [],
+                remoteCartId: null,
+                syncStatus: "idle",
+                syncError: null,
+              });
+              return;
+            }
+
+            const items = mapRemoteItemsToCart(
+              Array.isArray(payload.data.items) ? payload.data.items : [],
+              get().items,
+            );
+
+            set({
+              items,
+              remoteCartId: payload.data._id ?? null,
+              syncStatus: items.length > 0 ? "synced" : "idle",
+              syncError: null,
+            });
+          } catch {
+            set({
+              syncStatus: "error",
+              syncError: "Unable to load cart from care partner.",
+            });
+          }
+        })().finally(() => {
+          refreshInFlight = null;
+        });
+
+        await refreshInFlight;
       },
 
       addItem: async (item) => {
