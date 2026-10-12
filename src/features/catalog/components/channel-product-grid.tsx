@@ -2,6 +2,7 @@
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorState } from "@/components/shared/error-state";
+import { Stagger, StaggerItem } from "@/components/motion/stagger";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChannelProductCard } from "@/features/catalog/components/channel-product-card";
@@ -22,13 +23,20 @@ export function ChannelProductGrid({
   limit,
 }: ChannelProductGridProps) {
   const { isLoading, error, refetch, isReady } = useChannel();
-  const visible = typeof limit === "number" ? products.slice(0, limit) : products;
+  const visible =
+    typeof limit === "number" ? products.slice(0, limit) : products;
 
   if (isLoading && !isReady) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+      <div
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        aria-busy="true"
+      >
         {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="space-y-3 rounded-xl border border-border p-4">
+          <div
+            key={index}
+            className="space-y-3 rounded-xl border border-border p-4"
+          >
             <Skeleton className="aspect-[4/3] w-full rounded-lg" />
             <Skeleton className="h-5 w-2/3" />
             <Skeleton className="h-4 w-full" />
@@ -65,10 +73,15 @@ export function ChannelProductGrid({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {visible.map((product) => (
-        <ChannelProductCard key={product.id} product={product} />
+    <Stagger
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      as="div"
+    >
+      {visible.map((product, index) => (
+        <StaggerItem key={product.id} index={index}>
+          <ChannelProductCard product={product} />
+        </StaggerItem>
       ))}
-    </div>
+    </Stagger>
   );
 }

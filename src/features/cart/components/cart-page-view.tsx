@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { Loader2, ShoppingBag, Trash2 } from "lucide-react";
+import { Reveal } from "@/components/motion/reveal";
+import { Stagger, StaggerItem } from "@/components/motion/stagger";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { ProductImage } from "@/components/shared/product-image";
@@ -40,26 +42,28 @@ export function CartPageView() {
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-16 sm:px-6">
-      <PageHeader
-        title="Your cart"
-        description="Selected treatments stay in your cart until you continue or remove them."
-        actions={
-          !isEmpty ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isPending || isSyncing}
-              onClick={() => {
-                startTransition(async () => {
-                  await clearCart();
-                });
-              }}
-            >
-              Clear cart
-            </Button>
-          ) : null
-        }
-      />
+      <Reveal>
+        <PageHeader
+          title="Your cart"
+          description="Selected treatments stay in your cart until you continue or remove them."
+          actions={
+            !isEmpty ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isPending || isSyncing}
+                onClick={() => {
+                  startTransition(async () => {
+                    await clearCart();
+                  });
+                }}
+              >
+                Clear cart
+              </Button>
+            ) : null
+          }
+        />
+      </Reveal>
 
       {syncError ? (
         <p className="rounded-lg border border-destructive/20 bg-destructive-muted px-4 py-3 text-sm text-destructive" role="alert">
@@ -85,12 +89,17 @@ export function CartPageView() {
         />
       ) : (
         <div className="space-y-6">
-          <ul className="divide-y divide-border rounded-xl border border-border bg-card">
-            {items.map((item) => {
+          <Stagger
+            as="ul"
+            className="divide-y divide-border rounded-xl border border-border bg-card"
+          >
+            {items.map((item, index) => {
               const imageUrl = getProductImageUrl(item.image);
               return (
-                <li
+                <StaggerItem
                   key={item.id}
+                  as="li"
+                  index={index}
                   className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex min-w-0 items-center gap-4">
@@ -105,7 +114,7 @@ export function CartPageView() {
                     <div className="min-w-0 space-y-1">
                       <Link
                         href={item.href}
-                        className="block truncate text-base font-semibold text-foreground hover:text-primary"
+                        className="motion-link-underline block truncate text-base font-semibold text-foreground hover:text-primary"
                       >
                         {item.name}
                       </Link>
@@ -130,10 +139,10 @@ export function CartPageView() {
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                     Remove
                   </Button>
-                </li>
+                </StaggerItem>
               );
             })}
-          </ul>
+          </Stagger>
 
           <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>

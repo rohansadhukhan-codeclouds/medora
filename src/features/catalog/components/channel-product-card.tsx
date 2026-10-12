@@ -17,19 +17,30 @@ import {
   getDisplayPrice,
   getProductImageUrl,
 } from "@/features/catalog/lib/product-utils";
+import { cn } from "@/lib/utils/cn";
 
 type ChannelProductCardProps = {
   product: CatalogProduct;
+  className?: string;
 };
 
-export function ChannelProductCard({ product }: ChannelProductCardProps) {
+export function ChannelProductCard({
+  product,
+  className,
+}: ChannelProductCardProps) {
   const imageUrl = getProductImageUrl(product.image);
   const price = getDisplayPrice(product);
   const href = `/catalog/${encodeURIComponent(product.id)}`;
-  const categoryLabel = product.categories[0]?.name || product.conditions[0]?.name;
+  const categoryLabel =
+    product.categories[0]?.name || product.conditions[0]?.name;
 
   return (
-    <Card className="flex h-full flex-col overflow-hidden transition-shadow hover:shadow-md">
+    <Card
+      className={cn(
+        "motion-card-lift flex h-full flex-col overflow-hidden",
+        className,
+      )}
+    >
       <Link href={href} className="block focus-visible:outline-none">
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
           <ProductImage
@@ -37,16 +48,19 @@ export function ChannelProductCard({ product }: ChannelProductCardProps) {
             alt={product.name}
             fill
             sizes="(max-width: 768px) 100vw, 33vw"
+            className="motion-image-zoom object-cover"
           />
         </div>
       </Link>
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap gap-2">
-          {categoryLabel ? <Badge variant="secondary">{categoryLabel}</Badge> : null}
+          {categoryLabel ? (
+            <Badge variant="secondary">{categoryLabel}</Badge>
+          ) : null}
           {product.type ? <Badge variant="muted">{product.type}</Badge> : null}
         </div>
         <CardTitle className="text-lg">
-          <Link href={href} className="hover:text-primary">
+          <Link href={href} className="motion-link-underline hover:text-primary">
             {product.name}
           </Link>
         </CardTitle>
@@ -60,7 +74,9 @@ export function ChannelProductCard({ product }: ChannelProductCardProps) {
             Starting from {price}
           </p>
         ) : (
-          <p className="text-sm text-muted-foreground">Pricing shown after review</p>
+          <p className="text-sm text-muted-foreground">
+            Pricing shown after review
+          </p>
         )}
         <div className="flex flex-col gap-2">
           <AddToCartButton product={product} className="w-full" />

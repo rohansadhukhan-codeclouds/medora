@@ -12,10 +12,28 @@ import { cn } from "@/lib/utils/cn";
 
 type LiveBreadcrumbProps = {
   currentLabel: string;
-  /** Used when no in-app referrer is known. Default: /treatments */
   fallbackOriginHref?: string;
   className?: string;
 };
+
+function fallbackCrumbs(
+  currentLabel: string,
+  fallbackOriginHref: string,
+): BreadcrumbCrumb[] {
+  return [
+    { href: "/", label: "Home" },
+    { href: fallbackOriginHref, label: "Treatments" },
+    { label: currentLabel },
+  ];
+}
+
+function crumbsEqual(a: BreadcrumbCrumb[], b: BreadcrumbCrumb[]) {
+  if (a.length !== b.length) return false;
+  return a.every(
+    (crumb, index) =>
+      crumb.href === b[index]?.href && crumb.label === b[index]?.label,
+  );
+}
 
 export function LiveBreadcrumb({
   currentLabel,
@@ -23,20 +41,17 @@ export function LiveBreadcrumb({
   className,
 }: LiveBreadcrumbProps) {
   const pathname = usePathname();
-  const [crumbs, setCrumbs] = useState<BreadcrumbCrumb[]>(() => [
-    { href: "/", label: "Home" },
-    { href: fallbackOriginHref, label: "Treatments" },
-    { label: currentLabel },
-  ]);
+  const [crumbs, setCrumbs] = useState<BreadcrumbCrumb[]>(() =>
+    fallbackCrumbs(currentLabel, fallbackOriginHref),
+  );
 
   useEffect(() => {
-    setCrumbs(
-      buildLiveBreadcrumbs({
-        currentPath: pathname,
-        currentLabel,
-        fallbackOriginHref,
-      }),
-    );
+    const next = buildLiveBreadcrumbs({
+      currentPath: pathname,
+      currentLabel,
+      fallbackOriginHref,
+    });
+    setCrumbs((prev) => (crumbsEqual(prev, next) ? prev : next));
   }, [pathname, currentLabel, fallbackOriginHref]);
 
   return (
@@ -45,7 +60,10 @@ export function LiveBreadcrumb({
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1;
           return (
-            <li key={`${crumb.label}-${index}`} className="flex items-center gap-1.5">
+            <li
+              key={`${crumb.href ?? "current"}-${crumb.label}-${index}`}
+              className="flex items-center gap-1.5"
+            >
               {index > 0 ? (
                 <ChevronRight
                   className="h-3.5 w-3.5 shrink-0 opacity-60"

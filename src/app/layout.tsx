@@ -21,7 +21,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${medoraSans.variable} h-full`}>
+    <html
+      lang="en"
+      className={`${medoraSans.variable} h-full`}
+      data-scroll-behavior="smooth"
+    >
       <body className="min-h-full flex flex-col font-sans">
         <QueryProvider>
           <SessionProvider>

@@ -4,6 +4,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { LiveBreadcrumb } from "@/components/shared/live-breadcrumb";
 import { PageHeader } from "@/components/shared/page-header";
 import { ProductImage } from "@/components/shared/product-image";
+import { Reveal } from "@/components/motion/reveal";
+import { Stagger, StaggerItem } from "@/components/motion/stagger";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,23 +77,26 @@ export function ProductDetailView({ productId }: ProductDetailViewProps) {
     <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-16 sm:px-6">
       <LiveBreadcrumb currentLabel={product.name} />
 
-      <PageHeader
-        title={product.name}
-        description={product.descriptionShort}
-      />
+      <Reveal delayMs={60}>
+        <PageHeader
+          title={product.name}
+          description={product.descriptionShort}
+        />
+      </Reveal>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        <div className="relative aspect-square overflow-hidden rounded-xl border border-border bg-muted">
+        <Reveal className="relative aspect-square overflow-hidden rounded-xl border border-border bg-muted">
           <ProductImage
             src={imageUrl}
             alt={product.name}
             fill
             sizes="(max-width: 1024px) 100vw, 50vw"
             priority
+            className="motion-image-zoom"
           />
-        </div>
+        </Reveal>
 
-        <div className="space-y-6">
+        <Reveal delayMs={90} className="space-y-6">
           <div className="flex flex-wrap gap-2">
             {product.categories.map((category) =>
               category.name ? (
@@ -138,40 +143,42 @@ export function ProductDetailView({ productId }: ProductDetailViewProps) {
             Product information is provided by your care channel. Final treatment
             decisions are made by a licensed healthcare provider.
           </p>
-        </div>
+        </Reveal>
       </div>
 
       {product.variants.length > 0 ? (
-        <section className="space-y-4">
+        <Reveal as="section" className="space-y-4">
           <h2 className="text-lg font-semibold">Available variants</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            {product.variants.map((variant) => (
-              <Card key={variant._id || variant.sku || variant.name}>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    {variant.name || "Variant"}
-                  </CardTitle>
-                  {variant.description ? (
-                    <CardDescription>{variant.description}</CardDescription>
-                  ) : null}
-                </CardHeader>
-                <CardContent className="text-sm">
-                  {formatProductPrice(variant.sale_price) ||
-                  formatProductPrice(variant.intro_price) ||
-                  formatProductPrice(variant.default_price) ? (
-                    <p className="font-medium">
-                      {formatProductPrice(variant.sale_price) ||
-                        formatProductPrice(variant.intro_price) ||
-                        formatProductPrice(variant.default_price)}
-                    </p>
-                  ) : (
-                    <p className="text-muted-foreground">Price on request</p>
-                  )}
-                </CardContent>
-              </Card>
+          <Stagger className="grid gap-4 md:grid-cols-2">
+            {product.variants.map((variant, index) => (
+              <StaggerItem key={variant._id || variant.sku || variant.name} index={index}>
+                <Card className="motion-card-lift">
+                  <CardHeader>
+                    <CardTitle className="text-base">
+                      {variant.name || "Variant"}
+                    </CardTitle>
+                    {variant.description ? (
+                      <CardDescription>{variant.description}</CardDescription>
+                    ) : null}
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    {formatProductPrice(variant.sale_price) ||
+                    formatProductPrice(variant.intro_price) ||
+                    formatProductPrice(variant.default_price) ? (
+                      <p className="font-medium">
+                        {formatProductPrice(variant.sale_price) ||
+                          formatProductPrice(variant.intro_price) ||
+                          formatProductPrice(variant.default_price)}
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground">Price on request</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </StaggerItem>
             ))}
-          </div>
-        </section>
+          </Stagger>
+        </Reveal>
       ) : null}
     </div>
   );
