@@ -9,7 +9,6 @@ import {
   viewSalesSession,
 } from "@/lib/api/astermd/sessions";
 import {
-  clearVisitorSessionCookie,
   getVisitorSessionId,
   resolveClientIp,
   setVisitorSessionCookie,
@@ -18,8 +17,9 @@ import {
 const NO_STORE = { "Cache-Control": "private, no-store" } as const;
 
 /**
- * Ensure a visitor sales session exists (cookie + AsterMD create).
- * Idempotent: existing valid cookie is reused; invalid cookie is replaced.
+ * Mandatory visitor session ensure:
+ * - Cookie already set → reuse that session id (created earlier)
+ * - No cookie → POST AsterMD sessions/create, then set cookie
  */
 export async function POST(request: NextRequest) {
   try {
@@ -30,36 +30,31 @@ export async function POST(request: NextRequest) {
       (!config.baseUrl || !config.clientId || !config.clientSecret)
     ) {
       return NextResponse.json(
-        { error: "AsterMD credentials are not configured on the server." },
+        { ok: false, error: "AsterMD credentials are not configured on the server." },
         { status: 503, headers: NO_STORE },
       );
     }
 
     if (!config.useMock && !config.channelId) {
       return NextResponse.json(
-        { error: "AsterMD channel id is not configured." },
+        { ok: false, error: "AsterMD channel id is not configured." },
         { status: 400, headers: NO_STORE },
       );
     }
 
     const existingId = await getVisitorSessionId();
     if (existingId) {
-      try {
-        const entry = await viewSalesSession(existingId);
-        if (entry) {
-          return NextResponse.json(
-            {
-              ok: true,
-              created: false,
-              sessionId: existingId,
-              source: config.useMock ? "mock" : "reuse",
-            },
-            { headers: NO_STORE },
-          );
-        }
-      } catch {
-        await clearVisitorSessionCookie();
-      }
+      // Already created for this browser — reuse. Refresh cookie max-age.
+      await setVisitorSessionCookie(existingId);
+      return NextResponse.json(
+        {
+          ok: true,
+          created: false,
+          sessionId: existingId,
+          source: config.useMock ? "mock" : "reuse",
+        },
+        { headers: NO_STORE },
+      );
     }
 
     const clientIp = resolveClientIp(request);
@@ -91,6 +86,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * Load the current visitor session journey from AsterMD view API.
+ * Requires an existing session cookie (created via POST).
  */
 export async function GET(request: NextRequest) {
   try {

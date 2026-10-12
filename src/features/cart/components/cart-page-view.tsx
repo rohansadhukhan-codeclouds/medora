@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ShoppingBag, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { ProductImage } from "@/components/shared/product-image";
 import { Button } from "@/components/ui/button";
 import { formatProductPrice, getProductImageUrl } from "@/features/catalog/lib/product-utils";
 import { useCart } from "@/hooks/use-cart";
@@ -50,19 +50,12 @@ export function CartPageView() {
                 >
                   <div className="flex min-w-0 items-center gap-4">
                     <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
-                      {imageUrl ? (
-                        <Image
-                          src={imageUrl}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          sizes="80px"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                          No image
-                        </div>
-                      )}
+                      <ProductImage
+                        src={imageUrl}
+                        alt={item.name}
+                        fill
+                        sizes="80px"
+                      />
                     </div>
                     <div className="min-w-0 space-y-1">
                       <Link

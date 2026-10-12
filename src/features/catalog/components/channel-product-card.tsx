@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ProductImage } from "@/components/shared/product-image";
 import { AddToCartButton } from "@/features/cart/components/add-to-cart-button";
 import type { CatalogProduct } from "@/features/catalog/lib/product-utils";
 import {
@@ -31,20 +31,13 @@ export function ChannelProductCard({ product }: ChannelProductCardProps) {
   return (
     <Card className="flex h-full flex-col overflow-hidden transition-shadow hover:shadow-md">
       <Link href={href} className="block focus-visible:outline-none">
-        <div className="relative aspect-[4/3] bg-muted">
-          {imageUrl ? (
-            <Image
-              src={imageUrl}
-              alt={product.name}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 33vw"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              No image
-            </div>
-          )}
+        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+          <ProductImage
+            src={imageUrl}
+            alt={product.name}
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+          />
         </div>
       </Link>
       <CardHeader className="space-y-3">

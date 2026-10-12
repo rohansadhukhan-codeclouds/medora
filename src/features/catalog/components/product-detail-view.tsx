@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ProductImage } from "@/components/shared/product-image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -88,20 +88,13 @@ export function ProductDetailView({ productId }: ProductDetailViewProps) {
 
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="relative aspect-square overflow-hidden rounded-xl border border-border bg-muted">
-          {imageUrl ? (
-            <Image
-              src={imageUrl}
-              alt={product.name}
-              fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              priority
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              No product image
-            </div>
-          )}
+          <ProductImage
+            src={imageUrl}
+            alt={product.name}
+            fill
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            priority
+          />
         </div>
 
         <div className="space-y-6">

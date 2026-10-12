@@ -27,7 +27,10 @@ export function useVisitorSession() {
     })),
   );
 
-  const refetch = useCallback(() => ensureSession(), [ensureSession]);
+  const refetch = useCallback(
+    () => ensureSession({ force: true }),
+    [ensureSession],
+  );
 
   return {
     sessionId,

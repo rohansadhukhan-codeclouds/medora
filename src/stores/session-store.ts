@@ -15,34 +15,35 @@ type SessionStoreState = {
   error: string | null;
   created: boolean | null;
   events: AsterMdSessionJourneyEvent[];
-  ensureSession: () => Promise<string | null>;
+  /** Shared in-flight ensure so concurrent callers wait on one POST. */
+  ensurePromise: Promise<string | null> | null;
+  ensureSession: (options?: { force?: boolean }) => Promise<string | null>;
   refreshJourney: (tz?: string) => Promise<void>;
   clearSessionState: () => void;
 };
 
-export const useSessionStore = create<SessionStoreState>((set, get) => ({
-  sessionId: null,
-  status: "idle",
-  error: null,
-  created: null,
-  events: [],
+const MAX_ENSURE_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 600;
 
-  ensureSession: async () => {
-    const current = get();
-    if (current.status === "loading") {
-      return current.sessionId;
-    }
-    if (current.status === "success" && current.sessionId) {
-      return current.sessionId;
-    }
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
 
-    set({ status: "loading", error: null });
+async function requestEnsureSession(): Promise<{
+  sessionId: string;
+  created: boolean;
+}> {
+  let lastError = "Unable to start browsing session right now.";
 
+  for (let attempt = 1; attempt <= MAX_ENSURE_ATTEMPTS; attempt += 1) {
     try {
       const response = await fetch("/api/astermd/session", {
         method: "POST",
         headers: { Accept: "application/json" },
         cache: "no-store",
+        credentials: "same-origin",
       });
 
       const payload = (await response.json()) as {
@@ -52,29 +53,78 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         error?: string;
       };
 
-      if (!response.ok || !payload.sessionId) {
-        const message =
-          payload.error ?? "Unable to start browsing session right now.";
-        set({ status: "error", error: message, sessionId: null });
-        return null;
+      if (response.ok && payload.sessionId) {
+        return {
+          sessionId: payload.sessionId,
+          created: Boolean(payload.created),
+        };
       }
 
-      set({
-        sessionId: payload.sessionId,
-        created: Boolean(payload.created),
-        status: "success",
-        error: null,
-      });
-
-      return payload.sessionId;
+      lastError =
+        payload.error ?? "Unable to start browsing session right now.";
     } catch {
-      set({
-        status: "error",
-        error: "Unable to start browsing session right now.",
-        sessionId: null,
-      });
-      return null;
+      lastError = "Unable to start browsing session right now.";
     }
+
+    if (attempt < MAX_ENSURE_ATTEMPTS) {
+      await wait(RETRY_DELAY_MS * attempt);
+    }
+  }
+
+  throw new Error(lastError);
+}
+
+export const useSessionStore = create<SessionStoreState>((set, get) => ({
+  sessionId: null,
+  status: "idle",
+  error: null,
+  created: null,
+  events: [],
+  ensurePromise: null,
+
+  ensureSession: async (options) => {
+    const force = options?.force ?? false;
+    const current = get();
+
+    if (!force && current.status === "success" && current.sessionId) {
+      return current.sessionId;
+    }
+
+    if (!force && current.ensurePromise) {
+      return current.ensurePromise;
+    }
+
+    const promise = (async () => {
+      set({ status: "loading", error: null });
+
+      try {
+        const result = await requestEnsureSession();
+        set({
+          sessionId: result.sessionId,
+          created: result.created,
+          status: "success",
+          error: null,
+          ensurePromise: null,
+        });
+        return result.sessionId;
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Unable to start browsing session right now.";
+        set({
+          status: "error",
+          error: message,
+          sessionId: null,
+          created: null,
+          ensurePromise: null,
+        });
+        return null;
+      }
+    })();
+
+    set({ ensurePromise: promise });
+    return promise;
   },
 
   refreshJourney: async (tz = "Asia/Kolkata") => {
@@ -87,6 +137,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         method: "GET",
         headers: { Accept: "application/json" },
         cache: "no-store",
+        credentials: "same-origin",
       });
 
       const payload = (await response.json()) as {
@@ -113,5 +164,6 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       error: null,
       created: null,
       events: [],
+      ensurePromise: null,
     }),
 }));

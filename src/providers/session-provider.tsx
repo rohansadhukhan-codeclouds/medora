@@ -1,28 +1,33 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { useSessionStore } from "@/stores/session-store";
 
 /**
- * On first browser open / app mount, ensure an AsterMD visitor sales session
- * exists via BFF POST /api/astermd/session (HttpOnly cookie + create/reuse).
+ * Mandatory visitor session on every page open/navigation:
+ * - No cookie / not ready → create via BFF
+ * - Cookie already exists → reuse
  */
 export function SessionProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const ensureSession = useSessionStore((state) => state.ensureSession);
   const refreshJourney = useSessionStore((state) => state.refreshJourney);
-  const booted = useRef(false);
 
   useEffect(() => {
-    if (booted.current) return;
-    booted.current = true;
+    let cancelled = false;
 
     void (async () => {
-      const sessionId = await ensureSession();
-      if (sessionId) {
+      const id = await ensureSession();
+      if (!cancelled && id) {
         void refreshJourney("Asia/Kolkata");
       }
     })();
-  }, [ensureSession, refreshJourney]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, ensureSession, refreshJourney]);
 
   return children;
 }
