@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 
-export const PRODUCT_IMAGE_PLACEHOLDER = "/images/product-placeholder.svg";
+const PRODUCT_IMAGE_PLACEHOLDER = "/images/product-placeholder.svg";
 
 type ProductImageProps = {
   src?: string | null;

@@ -161,11 +161,8 @@ export function CartPageView() {
               )}
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button asChild variant="outline">
-                <Link href="/treatments">Keep browsing</Link>
-              </Button>
               <Button asChild>
-                <Link href="/eligibility">Continue</Link>
+                <Link href="/treatments">Keep browsing</Link>
               </Button>
             </div>
           </div>

@@ -44,14 +44,6 @@ export function MarketingFooter() {
             </li>
             <li>
               <Link
-                href="/status"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Treatment status
-              </Link>
-            </li>
-            <li>
-              <Link
                 href="/cart"
                 className="text-sm text-muted-foreground hover:text-foreground"
               >

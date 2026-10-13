@@ -8,13 +8,6 @@ const PATH_LABELS: Record<string, string> = {
   "/how-it-works": "How it works",
   "/faq": "FAQ",
   "/about": "About",
-  "/eligibility": "Eligibility",
-  "/checkout": "Checkout",
-  "/plan": "Plan",
-  "/intake": "Intake",
-  "/verification": "Verification",
-  "/review": "Review",
-  "/status": "Status",
 };
 
 function readStack(): string[] {
@@ -49,7 +42,7 @@ export function recordNavPath(pathname: string) {
   writeStack(stack);
 }
 
-export function labelForPath(pathname: string): string {
+function labelForPath(pathname: string): string {
   const path = pathname.trim() || "/";
   if (PATH_LABELS[path]) return PATH_LABELS[path];
 

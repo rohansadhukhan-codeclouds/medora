@@ -26,6 +26,3 @@ export const ASTERMD_ENDPOINTS = {
   conversations: "/v1/sales/conversations",
   providerStatus: "/v1/sales/provider/status",
 } as const;
-
-/** @deprecated Use ASTERMD_ENDPOINTS */
-export const ASTERMD_ENDPOINT_PLACEHOLDERS = ASTERMD_ENDPOINTS;

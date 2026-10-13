@@ -59,7 +59,7 @@ export function HowItWorksPageView() {
       </Stagger>
       <Reveal delayMs={120} className="mt-12">
         <Button asChild>
-          <Link href="/eligibility">Begin your intake</Link>
+          <Link href="/#products">Browse treatments</Link>
         </Button>
       </Reveal>
     </div>
