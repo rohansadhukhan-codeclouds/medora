@@ -26,7 +26,8 @@ export function IntakePageView() {
   const [formJson, setFormJson] = useState<unknown>(null);
   const [cacheHit, setCacheHit] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startedAt = useRef(Date.now());
+  // Avoid Date.now() during render — breaks Next.js prerender purity checks.
+  const startedAt = useRef(0);
 
   useEffect(() => {
     let cancelled = false;

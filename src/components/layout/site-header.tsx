@@ -67,9 +67,6 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-2 md:flex">
           <HeaderCartButton />
-          <Button asChild>
-            <Link href="/#products">Get Started</Link>
-          </Button>
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
@@ -121,11 +118,6 @@ export function SiteHeader() {
               <Button asChild variant="outline">
                 <Link href="/cart" onClick={() => setOpen(false)}>
                   Cart
-                </Link>
-              </Button>
-              <Button asChild>
-                <Link href="/#products" onClick={() => setOpen(false)}>
-                  Get Started
                 </Link>
               </Button>
             </div>
