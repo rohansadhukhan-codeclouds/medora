@@ -5,14 +5,13 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ClipboardList } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
-import { AsterMdFormBuilder } from "@/features/intake/teleform/astermd-form-builder";
+import { DynamicFormRenderer } from "@/features/intake/teleform/dynamic-form-renderer";
 import { IntakeLoading } from "@/features/intake/teleform/intake-loading";
 
 type TeleformBootstrapResponse = {
   ok: boolean;
   error?: string;
   formJson?: unknown;
-  cacheHit?: boolean;
 };
 
 const MIN_LOADER_MS = 1800;
@@ -24,7 +23,6 @@ export function IntakePageView() {
   );
   const [error, setError] = useState<string | null>(null);
   const [formJson, setFormJson] = useState<unknown>(null);
-  const [cacheHit, setCacheHit] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Avoid Date.now() during render — breaks Next.js prerender purity checks.
   const startedAt = useRef(0);
@@ -52,9 +50,6 @@ export function IntakePageView() {
 
         if (cancelled) return;
 
-        console.log("[intake] teleform bootstrap response", payload);
-        console.log("[intake] form JSON", payload.formJson);
-
         if (!response.ok || !payload.ok || !payload.formJson) {
           setStatus("error");
           setError(payload.error ?? "Failed to load teleform.");
@@ -70,17 +65,14 @@ export function IntakePageView() {
         if (cancelled) return;
 
         setPercent(100);
-        setCacheHit(Boolean(payload.cacheHit));
         setFormJson(payload.formJson);
-        // Short beat at 100% so the bar reads complete.
         await new Promise((resolve) => setTimeout(resolve, 280));
         if (cancelled) return;
         setStatus("ready");
-      } catch (err) {
+      } catch {
         if (cancelled) return;
-        console.error("[intake] teleform bootstrap failed", err);
         setStatus("error");
-        setError("Failed to load teleform. See console for details.");
+        setError("Failed to load teleform.");
         setPercent(100);
       } finally {
         if (tickRef.current) {
@@ -121,9 +113,6 @@ export function IntakePageView() {
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                 Intake form
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Built dynamically from your AsterMD teleform schema.
-              </p>
             </div>
           </div>
         </Reveal>
@@ -154,12 +143,7 @@ export function IntakePageView() {
           {status === "ready" && formJson ? (
             <Reveal trigger="mount">
               <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-                {cacheHit ? (
-                  <p className="mb-6 rounded-xl border border-dashed border-border bg-accent/60 px-4 py-3 text-xs text-muted-foreground">
-                    Schema served from server cache (1 day TTL).
-                  </p>
-                ) : null}
-                <AsterMdFormBuilder schema={formJson} />
+                <DynamicFormRenderer formDefinition={formJson} />
               </div>
             </Reveal>
           ) : null}

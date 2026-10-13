@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";
+import { fieldLayoutClass } from "@/features/intake/teleform/layout";
 import { cn } from "@/lib/utils/cn";
 
 type FieldShellProps = {
@@ -9,6 +10,7 @@ type FieldShellProps = {
   description?: string;
   error?: string;
   fullWidth?: boolean;
+  cols?: number;
   className?: string;
   children: ReactNode;
 };
@@ -20,11 +22,18 @@ export function FieldShell({
   description,
   error,
   fullWidth,
+  cols,
   className,
   children,
 }: FieldShellProps) {
   return (
-    <div className={cn("space-y-2", fullWidth && "sm:col-span-2", className)}>
+    <div
+      className={cn(
+        "space-y-2",
+        fieldLayoutClass(cols, fullWidth),
+        className,
+      )}
+    >
       <Label htmlFor={id}>
         {label}
         {required ? <span className="text-destructive"> *</span> : null}

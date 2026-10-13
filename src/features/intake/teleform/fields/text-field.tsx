@@ -17,6 +17,13 @@ export function TextField({
   onChange,
   inputType = "text",
 }: Props) {
+  const minLength = field.validation?.minLength;
+  const maxLength = field.validation?.maxLength;
+  const min =
+    inputType === "number" ? field.validation?.minValue : undefined;
+  const max =
+    inputType === "number" ? field.validation?.maxValue : undefined;
+
   return (
     <FieldShell
       id={field.id}
@@ -25,6 +32,7 @@ export function TextField({
       description={field.description}
       error={error}
       fullWidth={field.fullWidth}
+      cols={field.meta?.cols}
     >
       <Input
         id={field.id}
@@ -33,6 +41,11 @@ export function TextField({
         value={value}
         placeholder={field.placeholder}
         required={field.required}
+        minLength={minLength}
+        maxLength={maxLength}
+        min={min}
+        max={max}
+        step={inputType === "number" ? field.meta?.step : undefined}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${field.id}-error` : undefined}
         onChange={(event) => onChange(event.target.value)}

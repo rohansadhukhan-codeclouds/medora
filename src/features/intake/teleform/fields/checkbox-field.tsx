@@ -32,6 +32,7 @@ export function CheckboxField(props: Props) {
         description={field.description}
         error={error}
         fullWidth={field.fullWidth}
+        cols={field.meta?.cols}
       >
         <label
           htmlFor={field.id}
@@ -60,6 +61,7 @@ export function CheckboxField(props: Props) {
       description={field.description}
       error={error}
       fullWidth
+      cols={field.meta?.cols}
     >
       <div className="space-y-2">
         {(field.options ?? []).map((option) => {

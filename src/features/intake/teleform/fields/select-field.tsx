@@ -18,6 +18,7 @@ export function SelectField({ field, value, error, onChange }: Props) {
       description={field.description}
       error={error}
       fullWidth={field.fullWidth}
+      cols={field.meta?.cols}
     >
       <select
         id={field.id}
@@ -32,9 +33,7 @@ export function SelectField({ field, value, error, onChange }: Props) {
         )}
         onChange={(event) => onChange(event.target.value)}
       >
-        <option value="">
-          {field.placeholder || "Select an option"}
-        </option>
+        <option value="">{field.placeholder || "Select an option"}</option>
         {(field.options ?? []).map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

@@ -1,10 +1,13 @@
+import { normalizeOptions } from "@/features/intake/teleform/options";
 import type {
   NormalizedTeleform,
   NormalizedTeleformField,
   NormalizedTeleformSection,
   TeleformBmiSubfield,
+  TeleformCondition,
   TeleformFieldType,
-  TeleformOption,
+  TeleformFieldValidation,
+  TeleformFormSettings,
   TeleformTermsLink,
 } from "@/features/intake/teleform/types";
 
@@ -32,7 +35,12 @@ function asNumberArray(value: unknown): number[] | undefined {
   return nums.length ? nums : undefined;
 }
 
-function mapFieldType(raw: string): TeleformFieldType {
+function asConditions(value: unknown): TeleformCondition[] | undefined {
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+  return value.filter(isRecord);
+}
+
+export function mapFieldType(raw: string): TeleformFieldType {
   const t = raw.toLowerCase().trim();
   switch (t) {
     case "text":
@@ -93,29 +101,6 @@ function mapFieldType(raw: string): TeleformFieldType {
   }
 }
 
-function readOptionsFromProperties(
-  properties: Record<string, unknown> | undefined,
-): TeleformOption[] {
-  if (!properties) return [];
-  const raw = properties.options;
-  if (!Array.isArray(raw)) return [];
-
-  const out: TeleformOption[] = [];
-  for (const item of raw) {
-    if (typeof item === "string" || typeof item === "number") {
-      const value = String(item);
-      out.push({ value, label: value });
-      continue;
-    }
-    if (!isRecord(item)) continue;
-    const value = asString(item.value ?? item.id ?? item.key ?? item.label);
-    const label = asString(item.label ?? item.text ?? item.title ?? value);
-    if (!value) continue;
-    out.push({ value, label: label || value });
-  }
-  return out;
-}
-
 function readTermsLinks(
   properties: Record<string, unknown> | undefined,
 ): TeleformTermsLink[] {
@@ -130,6 +115,46 @@ function readTermsLinks(
     .filter((link) => link.text);
 }
 
+function readValidation(
+  node: Record<string, unknown>,
+): TeleformFieldValidation | undefined {
+  const validation = isRecord(node.validation) ? node.validation : undefined;
+  if (!validation) return undefined;
+
+  const errorMessages = isRecord(validation.errorMessages)
+    ? Object.fromEntries(
+        Object.entries(validation.errorMessages).filter(
+          (entry): entry is [string, string] => typeof entry[1] === "string",
+        ),
+      )
+    : undefined;
+
+  const result: TeleformFieldValidation = {
+    required: validation.required === true ? true : undefined,
+    minLength: asNumber(validation.minLength),
+    maxLength: asNumber(validation.maxLength),
+    minValue: asNumber(validation.minValue),
+    maxValue: asNumber(validation.maxValue),
+    errorMessages:
+      errorMessages && Object.keys(errorMessages).length
+        ? errorMessages
+        : undefined,
+  };
+
+  if (
+    result.required === undefined &&
+    result.minLength === undefined &&
+    result.maxLength === undefined &&
+    result.minValue === undefined &&
+    result.maxValue === undefined &&
+    !result.errorMessages
+  ) {
+    return undefined;
+  }
+
+  return result;
+}
+
 function readBmiSubfields(node: Record<string, unknown>): TeleformBmiSubfield[] {
   if (!Array.isArray(node.subfields)) return [];
   return node.subfields.filter(isRecord).map((sub) => {
@@ -141,18 +166,40 @@ function readBmiSubfields(node: Record<string, unknown>): TeleformBmiSubfield[] 
       type: asString(sub.type, "text"),
       required: sub.required === true,
       placeholder: asString(sub.placeholder) || undefined,
-      options: readOptionsFromProperties(props),
+      options: normalizeOptions(props?.options),
       defaultValue: asString(props?.defaultValue) || undefined,
-      min:
-        typeof validation?.minValue === "number"
-          ? validation.minValue
-          : undefined,
-      max:
-        typeof validation?.maxValue === "number"
-          ? validation.maxValue
-          : undefined,
+      min: asNumber(validation?.minValue),
+      max: asNumber(validation?.maxValue),
+      step: asNumber(props?.step),
     };
   });
+}
+
+function readSettings(raw: Record<string, unknown>): TeleformFormSettings | undefined {
+  const settings = isRecord(raw.settings) ? raw.settings : undefined;
+  if (!settings) return undefined;
+
+  return {
+    saveDraft: settings.saveDraft === true,
+    draftExpiryDays: asNumber(settings.draftExpiryDays),
+    autoSave: settings.autoSave === true,
+    resumeMethod: asString(settings.resumeMethod) || undefined,
+    submitButtonText: asString(settings.submitButtonText) || undefined,
+    successMessage: asString(settings.successMessage) || undefined,
+    successRedirectUrl:
+      typeof settings.successRedirectUrl === "string"
+        ? settings.successRedirectUrl
+        : settings.successRedirectUrl === null
+          ? null
+          : undefined,
+    showProgressBar: settings.showProgressBar !== false,
+    pageColor: asString(settings.pageColor) || undefined,
+    backgroundColor: asString(settings.backgroundColor) || undefined,
+    accentColor: asString(settings.accentColor) || undefined,
+    // Remote script/CSS injection is intentionally not exposed for execution.
+    injectJsIgnored: true,
+    injectCssIgnored: true,
+  };
 }
 
 function toAsterMdField(
@@ -168,14 +215,18 @@ function toAsterMdField(
     asString(node.fieldId ?? node.id ?? node.name) || `field_${index}`;
   const name = asString(node.name ?? node.fieldId ?? node.id) || id;
   const label = asString(node.label) || name;
+  const validation = readValidation(node);
   const required = Boolean(
-    node.required === true ||
-      (isRecord(node.validation) && node.validation.required === true),
+    node.required === true || validation?.required === true,
   );
-  const options = readOptionsFromProperties(properties);
+  const options = normalizeOptions(properties?.options);
   const multiSelect = properties?.multiSelect === true;
+  const cols = asNumber(properties?.cols);
+  const order = asNumber(node.order) ?? index;
 
   const fullWidth =
+    cols === 1 ||
+    cols === undefined ||
     type === "textarea" ||
     type === "paragraph" ||
     type === "heading" ||
@@ -186,8 +237,7 @@ function toAsterMdField(
     type === "image" ||
     type === "form_progress" ||
     type === "form_header" ||
-    properties?.headingFullWidth === true ||
-    properties?.cols === 1;
+    properties?.headingFullWidth === true;
 
   return {
     id,
@@ -195,38 +245,81 @@ function toAsterMdField(
     label,
     type,
     required,
+    order,
     placeholder: asString(node.placeholder) || undefined,
     options: options.length ? options : undefined,
     rawType,
     fullWidth,
+    validation,
+    conditions: asConditions(node.conditions),
     meta: {
+      cols,
       buttonAction: asString(properties?.buttonAction) || undefined,
       buttonColor: asString(properties?.buttonColor) || undefined,
       buttonTextColor: asString(properties?.buttonTextColor) || undefined,
       multiSelect,
+      layout: asString(properties?.layout) || undefined,
+      choiceInputType: asString(properties?.choiceInputType) || undefined,
+      countryCode: asString(properties?.countryCode) || undefined,
+      step: asNumber(properties?.step),
       paragraphContent: asString(properties?.paragraphContent) || undefined,
       paragraphAlign: asString(properties?.paragraphAlign) || undefined,
-      // Preserve raw imageUrl (may contain multiple data URLs); do not trim
-      // mid-string newlines — asString only trims ends.
+      paragraphFontSize: asNumber(properties?.paragraphFontSize),
+      paragraphTextColor: asString(properties?.paragraphTextColor) || undefined,
       imageUrl:
         typeof properties?.imageUrl === "string"
           ? properties.imageUrl
           : asString(properties?.imageUrl) || undefined,
+      imageAlt: asString(properties?.imageAlt) || undefined,
       imageWidth: asNumber(properties?.imageWidth),
       imageHeight: asNumber(properties?.imageHeight),
       imageItemWidths: asNumberArray(properties?.imageItemWidths),
       imageItemHeights: asNumberArray(properties?.imageItemHeights),
       imageGap: asNumber(properties?.imageGap),
       imageFlexWrap: asString(properties?.imageFlexWrap) || undefined,
+      imageFlexDirection: asString(properties?.imageFlexDirection) || undefined,
       imageJustifyContent:
         asString(properties?.imageJustifyContent) || undefined,
+      imageAlignItems: asString(properties?.imageAlignItems) || undefined,
       imageResizeMode: asString(properties?.imageResizeMode) || undefined,
       imageHeading: asString(properties?.imageHeading) || undefined,
       imageSubheading: asString(properties?.imageSubheading) || undefined,
+      imageFullWidth: properties?.imageFullWidth === true,
+      imageFullHeight: properties?.imageFullHeight === true,
+      formHeaderMode: asString(properties?.formHeaderMode) || undefined,
+      formHeaderText: asString(properties?.formHeaderText) || undefined,
+      formHeaderTextColor:
+        asString(properties?.formHeaderTextColor) || undefined,
+      formHeaderTextSize: asNumber(properties?.formHeaderTextSize),
+      formHeaderAlign: asString(properties?.formHeaderAlign) || undefined,
+      formHeaderBackgroundColor:
+        asString(properties?.formHeaderBackgroundColor) || undefined,
+      formHeaderHeight: asNumber(properties?.formHeaderHeight),
+      formHeaderShadow: properties?.formHeaderShadow === true,
+      formHeaderLogoUrl:
+        typeof properties?.formHeaderLogoUrl === "string"
+          ? properties.formHeaderLogoUrl
+          : asString(properties?.formHeaderLogoUrl) || undefined,
+      formHeaderLogoAlt: asString(properties?.formHeaderLogoAlt) || undefined,
+      formHeaderLogoWidth: asNumber(properties?.formHeaderLogoWidth),
+      formHeaderLogoHeight: asNumber(properties?.formHeaderLogoHeight),
+      progressColor: asString(properties?.progressColor) || undefined,
+      progressDisplayMode:
+        asString(properties?.progressDisplayMode) || undefined,
+      progressShowMeta: properties?.progressShowMeta === true,
+      progressShowBorder: properties?.progressShowBorder === true,
+      progressStepShape: asString(properties?.progressStepShape) || undefined,
       termsText: asString(properties?.termsText) || undefined,
       termsLinks: readTermsLinks(properties),
       headingFullWidth: properties?.headingFullWidth === true,
+      headingBorderRadius: asNumber(properties?.headingBorderRadius),
       titleColor: asString(properties?.titleColor) || undefined,
+      titleFontSize: asNumber(properties?.titleFontSize),
+      titleFontWeight:
+        typeof properties?.titleFontWeight === "number" ||
+        typeof properties?.titleFontWeight === "string"
+          ? properties.titleFontWeight
+          : undefined,
       fieldBackgroundColor:
         asString(properties?.fieldBackgroundColor) || undefined,
       bmiShowScale: properties?.bmiShowScale === true,
@@ -239,13 +332,19 @@ function toAsterMdField(
           }))
         : undefined,
       bmiSubfields: readBmiSubfields(node),
+      sendToProvider: node.sendToProvider === true,
+      dbField: asString(node.db_field) || undefined,
     },
   };
 }
 
+function sortByOrder<T extends { order: number }>(items: T[]): T[] {
+  return [...items].sort((a, b) => a.order - b.order);
+}
+
 /**
  * Primary path: AsterMD teleform builder JSON
- * `{ formName, pages: [{ pageId, title, fields: [...] }] }`
+ * `{ formName, pages: [{ pageId, title, order, fields: [...] }] }`
  */
 function normalizeAsterMdPages(raw: Record<string, unknown>): NormalizedTeleform | null {
   if (!Array.isArray(raw.pages) || raw.pages.length === 0) return null;
@@ -263,39 +362,26 @@ function normalizeAsterMdPages(raw: Record<string, unknown>): NormalizedTeleform
       if (normalized) fields.push(normalized);
     });
 
-    // Sort by order when present.
-    fields.sort((a, b) => {
-      const ao = fieldsRaw.findIndex(
-        (f) => isRecord(f) && asString(f.name) === a.name,
-      );
-      const bo = fieldsRaw.findIndex(
-        (f) => isRecord(f) && asString(f.name) === b.name,
-      );
-      const aOrder =
-        isRecord(fieldsRaw[ao]) && typeof fieldsRaw[ao].order === "number"
-          ? (fieldsRaw[ao].order as number)
-          : ao;
-      const bOrder =
-        isRecord(fieldsRaw[bo]) && typeof fieldsRaw[bo].order === "number"
-          ? (fieldsRaw[bo].order as number)
-          : bo;
-      return aOrder - bOrder;
-    });
-
     sections.push({
       id: asString(page.pageId ?? page.id, `section_${pageIndex}`),
       title: asString(page.title, `Page ${pageIndex + 1}`),
       description: asString(page.description) || undefined,
-      fields,
+      order: asNumber(page.order) ?? pageIndex,
+      conditions: asConditions(page.conditions),
+      fields: sortByOrder(fields),
     });
   });
 
   if (!sections.length) return null;
 
   return {
+    formId: asString(raw.formId) || undefined,
     title: asString(raw.formName ?? raw.title) || undefined,
     description: asString(raw.description) || undefined,
-    sections,
+    version: asNumber(raw.version),
+    formType: asString(raw.formType) || undefined,
+    settings: readSettings(raw),
+    sections: sortByOrder(sections),
     fieldCount: sections.reduce((sum, s) => sum + s.fields.length, 0),
   };
 }
@@ -314,32 +400,49 @@ export function normalizeTeleformJson(raw: unknown): NormalizedTeleform {
       id: asString(section.id, `section_${index}`),
       title: asString(section.title, `Page ${index + 1}`),
       description: asString(section.description) || undefined,
+      order: asNumber(section.order) ?? index,
+      conditions: asConditions(section.conditions),
       fields: Array.isArray(section.fields)
-        ? section.fields.filter(isRecord).map((field, fieldIndex) => {
-            const rawType = asString(field.rawType ?? field.type, "text");
-            return {
-              id: asString(field.id, `field_${fieldIndex}`),
-              name: asString(field.name, `field_${fieldIndex}`),
-              label: asString(field.label, asString(field.name)),
-              type: mapFieldType(rawType),
-              required: field.required === true,
-              placeholder: asString(field.placeholder) || undefined,
-              description: asString(field.description) || undefined,
-              options: Array.isArray(field.options)
-                ? (field.options as TeleformOption[])
-                : undefined,
-              rawType,
-              fullWidth: field.fullWidth === true,
-              meta: isRecord(field.meta) ? (field.meta as NormalizedTeleformField["meta"]) : undefined,
-            } satisfies NormalizedTeleformField;
-          })
+        ? sortByOrder(
+            section.fields.filter(isRecord).map((field, fieldIndex) => {
+              const rawType = asString(field.rawType ?? field.type, "text");
+              return {
+                id: asString(field.id, `field_${fieldIndex}`),
+                name: asString(field.name, `field_${fieldIndex}`),
+                label: asString(field.label, asString(field.name)),
+                type: mapFieldType(rawType),
+                required: field.required === true,
+                order: asNumber(field.order) ?? fieldIndex,
+                placeholder: asString(field.placeholder) || undefined,
+                description: asString(field.description) || undefined,
+                options: Array.isArray(field.options)
+                  ? normalizeOptions(field.options)
+                  : undefined,
+                rawType,
+                fullWidth: field.fullWidth === true,
+                validation: isRecord(field.validation)
+                  ? (field.validation as TeleformFieldValidation)
+                  : undefined,
+                conditions: asConditions(field.conditions),
+                meta: isRecord(field.meta)
+                  ? (field.meta as NormalizedTeleformField["meta"])
+                  : undefined,
+              } satisfies NormalizedTeleformField;
+            }),
+          )
         : [],
     }));
-    // If sections came from old normalize without options, prefer empty — caller should pass raw formJson.
+
     return {
+      formId: asString(raw.formId) || undefined,
       title: asString(raw.title) || undefined,
       description: asString(raw.description) || undefined,
-      sections,
+      version: asNumber(raw.version),
+      formType: asString(raw.formType) || undefined,
+      settings: isRecord(raw.settings)
+        ? (raw.settings as TeleformFormSettings)
+        : undefined,
+      sections: sortByOrder(sections),
       fieldCount: sections.reduce((sum, s) => sum + s.fields.length, 0),
     };
   }

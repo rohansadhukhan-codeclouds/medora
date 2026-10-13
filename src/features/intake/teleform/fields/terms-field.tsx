@@ -22,6 +22,7 @@ export function TermsField({ field, value, error, onChange }: Props) {
       required={field.required}
       error={error}
       fullWidth
+      cols={field.meta?.cols}
     >
       <label
         htmlFor={field.id}

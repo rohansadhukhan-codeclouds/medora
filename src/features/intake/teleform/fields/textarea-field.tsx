@@ -18,6 +18,7 @@ export function TextareaField({ field, value, error, onChange }: Props) {
       description={field.description}
       error={error}
       fullWidth
+      cols={field.meta?.cols}
     >
       <Textarea
         id={field.id}
@@ -25,6 +26,8 @@ export function TextareaField({ field, value, error, onChange }: Props) {
         value={value}
         placeholder={field.placeholder}
         required={field.required}
+        minLength={field.validation?.minLength}
+        maxLength={field.validation?.maxLength}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${field.id}-error` : undefined}
         onChange={(event) => onChange(event.target.value)}

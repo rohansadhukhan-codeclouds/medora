@@ -25,6 +25,7 @@ export function RadioField({ field, value, error, onChange }: Props) {
       description={field.description}
       error={error}
       fullWidth
+      cols={field.meta?.cols}
     >
       <div
         role="radiogroup"

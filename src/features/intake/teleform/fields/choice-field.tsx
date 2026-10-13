@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils/cn";
 
 type Props = {
   field: NormalizedTeleformField;
-  /** Multi = string[]; single = string */
+  /** Multi = string[]; single = string — driven by properties.multiSelect */
   multi: boolean;
   value: string | string[];
   error?: string;
@@ -16,6 +16,8 @@ type Props = {
 
 export function ChoiceField({ field, multi, value, error, onChange }: Props) {
   const options = field.options ?? [];
+  const horizontal =
+    (field.meta?.layout || "").toLowerCase() === "horizontal";
 
   if (!options.length) {
     return (
@@ -25,6 +27,7 @@ export function ChoiceField({ field, multi, value, error, onChange }: Props) {
         required={field.required}
         error={error || "No choices configured for this question."}
         fullWidth
+        cols={field.meta?.cols}
       >
         <p className="text-sm text-muted-foreground">Waiting for options…</p>
       </FieldShell>
@@ -40,8 +43,16 @@ export function ChoiceField({ field, multi, value, error, onChange }: Props) {
         required={field.required}
         error={error}
         fullWidth
+        cols={field.meta?.cols}
       >
-        <div role="radiogroup" className="space-y-2">
+        <div
+          role="radiogroup"
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${field.id}-error` : undefined}
+          className={cn(
+            horizontal ? "flex flex-wrap gap-2" : "space-y-2",
+          )}
+        >
           {options.map((option) => {
             const optionId = `${field.id}_${option.value}`;
             const selected = current === option.value;
@@ -85,8 +96,13 @@ export function ChoiceField({ field, multi, value, error, onChange }: Props) {
       required={field.required}
       error={error}
       fullWidth
+      cols={field.meta?.cols}
     >
-      <div className="space-y-2">
+      <div
+        className={cn(horizontal ? "flex flex-wrap gap-2" : "space-y-2")}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${field.id}-error` : undefined}
+      >
         {options.map((option) => {
           const optionId = `${field.id}_${option.value}`;
           const checked = selected.has(option.value);
