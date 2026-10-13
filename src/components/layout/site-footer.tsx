@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { SiteLogo } from "@/components/layout/site-logo";
-import { marketingNav } from "@/lib/constants/navigation";
+import { siteNav } from "@/lib/constants/navigation";
 import { siteConfig } from "@/config/site";
 
-export function MarketingFooter() {
+export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-card">
       <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
@@ -18,7 +18,7 @@ export function MarketingFooter() {
         <div>
           <h2 className="text-sm font-semibold text-foreground">Explore</h2>
           <ul className="mt-4 space-y-2">
-            {marketingNav.map((item) => (
+            {siteNav.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}

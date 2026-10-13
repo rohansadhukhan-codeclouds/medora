@@ -6,7 +6,7 @@ import { useChannelStore } from "@/stores/channel-store";
 /**
  * Boots AsterMD channel detail into Zustand after persist rehydration.
  * Fresh 1-day client cache → no network call.
- * Expired / missing → BFF (`/api/astermd/channel`), which itself caches
+ * Expired / missing → BFF (`/api/channel`), which itself caches
  * the AsterMD response for 1 day.
  */
 export function ChannelProvider({ children }: { children: React.ReactNode }) {

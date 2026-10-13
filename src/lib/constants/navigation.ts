@@ -4,7 +4,8 @@ export type NavItem = {
   description?: string;
 };
 
-export const marketingNav: NavItem[] = [
+/** Primary nav for end-user / storefront pages. */
+export const siteNav: NavItem[] = [
   { title: "Products", href: "/treatments" },
   { title: "How it works", href: "/how-it-works" },
   { title: "FAQ", href: "/faq" },

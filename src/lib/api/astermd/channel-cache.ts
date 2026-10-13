@@ -2,9 +2,10 @@ import "server-only";
 import type { AsterMdChannelDetailApiResponse } from "@/lib/api/astermd/channel-types";
 
 /**
- * ONLY place that caches AsterMD response bodies.
- * Scope: GET /v1/sales/channels/detail/{id} — nothing else
- * (patients, intakes, messages, token, etc. must not use this).
+ * Channel detail response cache.
+ * Scope: GET /v1/sales/channels/detail/{id}
+ * (Teleform bootstrap has its own 1-day cache in teleform-cache.ts.
+ *  Session/cart/token must not use this.)
  */
 /** Channel catalog cache TTL — refresh AsterMD after this window. */
 export const CHANNEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;

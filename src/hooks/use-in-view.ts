@@ -30,18 +30,30 @@ export function useInView<T extends Element = HTMLDivElement>(
     const node = ref.current;
     if (!node) return;
 
+    let frameA = 0;
+    let frameB = 0;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry?.isIntersecting) return;
-        // Observer callback is an external subscription — safe to set state.
-        setObserved(true);
+        // Defer one paint so opacity:0 is committed before reveal-in —
+        // otherwise soft navigations skip the CSS transition entirely.
+        frameA = requestAnimationFrame(() => {
+          frameB = requestAnimationFrame(() => {
+            setObserved(true);
+          });
+        });
         if (once) observer.disconnect();
       },
       { rootMargin, threshold },
     );
 
     observer.observe(node);
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(frameA);
+      cancelAnimationFrame(frameB);
+      observer.disconnect();
+    };
   }, [once, rootMargin, skipObservation, threshold]);
 
   return { ref, inView: skipObservation || observed };

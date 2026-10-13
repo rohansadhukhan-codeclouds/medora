@@ -23,10 +23,10 @@ Medora does **not** duplicate AsterMD as a custom healthcare backend. Clinical p
 ```text
 src/
   app/
-    (marketing)/     # Landing, treatments, how-it-works, FAQ, about
+    (storefront)/    # End-user pages: home, treatments, cart, intake, …
     (auth)/          # Login / register shells
     (patient)/       # Dashboard, intake, appointments, Rx, messages, profile
-    api/             # BFF route handlers → AsterMD client
+    api/             # BFF: /api/cart, /channel, /session, /teleform, /auth/…
   components/        # ui, layout, shared, forms
   features/          # Feature modules (auth, patient, intake, appointments, …)
   lib/
@@ -75,12 +75,15 @@ Open [http://localhost:3000](http://localhost:3000).
 4. `GET {BASE_URL}/v1/sales/channels/detail/{CHANNEL_ID}` uses env channel id
 
 BFF routes:
-- `POST /api/astermd/auth/status` — warm token; returns `{ hasToken, expiresAt }` only
-- `GET /api/astermd/channel` — channel detail for the configured channel id
+- `POST /api/auth/status` — warm token; returns `{ hasToken, expiresAt }` only
+- `GET /api/channel` — channel detail for the configured channel id
+- `POST|GET /api/session` — visitor sales session
+- `GET|POST /api/cart` — cart sync / view
+- `GET /api/teleform` — intake teleform bootstrap
 
 ### Global channel state (Zustand)
 
-On app load, `ChannelProvider` calls `/api/astermd/channel` and stores the full
+On app load, `ChannelProvider` calls `/api/channel` and stores the full
 channel `data` object in Zustand (`src/stores/channel-store.ts`).
 
 ```tsx

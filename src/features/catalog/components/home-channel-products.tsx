@@ -7,7 +7,7 @@ import { getCatalogProducts } from "@/features/catalog/lib/product-utils";
 import { useChannel } from "@/hooks/use-channel";
 
 /**
- * Renders channel products from global Zustand (hydrated via /api/astermd/channel).
+ * Renders channel products from global Zustand (hydrated via /api/channel).
  */
 export function HomeChannelProducts() {
   const { products: channelProducts, channel } = useChannel();

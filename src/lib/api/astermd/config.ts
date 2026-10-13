@@ -7,6 +7,7 @@ export type AsterMdCredentials = {
   clientSecret: string | undefined;
   channelId: string | undefined;
   apiKey: string | undefined;
+  intakeFormId: string | undefined;
 };
 
 export type AsterMdConfig = AsterMdCredentials & {
@@ -30,6 +31,7 @@ export function resolveAsterMdCredentials(
       clientSecret: env.ASTERMD_PROD_CLIENT_SECRET,
       channelId: env.ASTERMD_PROD_CHANNEL_ID,
       apiKey: env.ASTERMD_PROD_API_KEY,
+      intakeFormId: env.ASTERMD_INTAKE_FORM_ID,
     };
   }
 
@@ -39,6 +41,7 @@ export function resolveAsterMdCredentials(
     clientSecret: env.ASTERMD_DEV_CLIENT_SECRET,
     channelId: env.ASTERMD_DEV_CHANNEL_ID,
     apiKey: env.ASTERMD_DEV_API_KEY,
+    intakeFormId: env.ASTERMD_INTAKE_FORM_ID,
   };
 }
 

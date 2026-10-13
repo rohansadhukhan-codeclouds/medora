@@ -7,10 +7,10 @@ import { Menu, X } from "lucide-react";
 import { SiteLogo } from "@/components/layout/site-logo";
 import { Button } from "@/components/ui/button";
 import { HeaderCartButton } from "@/features/cart/components/header-cart-button";
-import { marketingNav } from "@/lib/constants/navigation";
+import { siteNav } from "@/lib/constants/navigation";
 import { cn } from "@/lib/utils/cn";
 
-export function MarketingHeader() {
+export function SiteHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -46,7 +46,7 @@ export function MarketingHeader() {
         <SiteLogo />
 
         <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">
-          {marketingNav.map((item) => {
+          {siteNav.map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -99,7 +99,7 @@ export function MarketingHeader() {
             className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-4"
             aria-label="Mobile"
           >
-            {marketingNav.map((item, index) => (
+            {siteNav.map((item, index) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -114,7 +114,7 @@ export function MarketingHeader() {
               className="motion-mobile-link mt-3 flex flex-col gap-2"
               style={{
                 transitionDelay: open
-                  ? `${marketingNav.length * 45}ms`
+                  ? `${siteNav.length * 45}ms`
                   : "0ms",
               }}
             >

@@ -148,6 +148,45 @@
   transition-delay: calc(var(--hero-index, 0) * 70ms);
 }
 
+/* Header cart preview panel */
+.motion-cart-preview {
+  opacity: 0;
+  transform: translate3d(0, -10px, 0) scale(0.96);
+  transform-origin: top right;
+  transition:
+    opacity var(--motion-emphasis) var(--motion-ease-expressive),
+    transform var(--motion-emphasis) var(--motion-ease-expressive),
+    visibility 0ms linear var(--motion-emphasis);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.motion-cart-preview[data-open="true"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity var(--motion-emphasis) var(--motion-ease-expressive),
+    transform var(--motion-emphasis) var(--motion-ease-expressive),
+    visibility 0ms linear 0ms;
+}
+
+.motion-cart-preview-item {
+  opacity: 0;
+  transform: translate3d(0, 8px, 0);
+  transition:
+    opacity var(--motion-normal) var(--motion-ease-smooth),
+    transform var(--motion-normal) var(--motion-ease-expressive),
+    background-color var(--motion-fast) var(--motion-ease-standard);
+  transition-delay: calc(var(--cart-item-index, 0) * 45ms);
+}
+
+.motion-cart-preview[data-open="true"] .motion-cart-preview-item {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
 /* Interactive surfaces */
 .motion-pressable {
   transition:
@@ -310,10 +349,14 @@
   .motion-reveal,
   .motion-stagger-item,
   .motion-hero-item,
-  .motion-mobile-link {
+  .motion-mobile-link,
+  .motion-cart-preview,
+  .motion-cart-preview-item {
     opacity: 1 !important;
     transform: none !important;
     transition: none !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
   }
 
   .motion-pressable:hover:not(:disabled),

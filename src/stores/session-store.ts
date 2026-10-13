@@ -39,7 +39,7 @@ async function requestEnsureSession(): Promise<{
 
   for (let attempt = 1; attempt <= MAX_ENSURE_ATTEMPTS; attempt += 1) {
     try {
-      const response = await fetch("/api/astermd/session", {
+      const response = await fetch("/api/session", {
         method: "POST",
         headers: { Accept: "application/json" },
         cache: "no-store",
@@ -133,7 +133,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
 
     try {
       const params = new URLSearchParams({ tz });
-      const response = await fetch(`/api/astermd/session?${params}`, {
+      const response = await fetch(`/api/session?${params}`, {
         method: "GET",
         headers: { Accept: "application/json" },
         cache: "no-store",

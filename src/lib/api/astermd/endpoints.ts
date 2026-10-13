@@ -13,6 +13,15 @@ export const ASTERMD_ENDPOINTS = {
     `/v1/sales/carts/update/${encodeURIComponent(sessionId)}`,
   cartsView: (sessionId: string) =>
     `/v1/sales/carts/view/${encodeURIComponent(sessionId)}`,
+  teleformsView: (teleformId: string) =>
+    `/v1/sales/teleforms/view/${encodeURIComponent(teleformId)}`,
+  /**
+   * form_json_identifier is a full S3 key (may include `/`).
+   * Encode the whole key as one path segment (`/` → `%2F`), matching AsterMD.
+   * Example: …/view-url/acct%2Forg%2Fslug_42.json
+   */
+  teleformsViewUrl: (formJsonIdentifier: string) =>
+    `/v1/sales/teleforms/view-url/${encodeURIComponent(formJsonIdentifier)}`,
 
   // Remaining domain paths stay placeholders until wired from docs/SDK.
   patients: "/v1/sales/patients",

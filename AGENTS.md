@@ -58,13 +58,12 @@ Scripts: `npm run dev` | `build` | `start` | `lint` | `typecheck`
 ```text
 src/
   app/
-    (marketing)/     # Landing, treatments, catalog, cart
+    (storefront)/    # End-user pages: home, treatments, catalog, cart, intake
     (auth)/          # Login / register shells
-    (flow)/          # Eligibility → checkout → verification → intake shells
     (account)/       # Account area UI
     (patient)/       # Redirects / legacy patient routes
     (portal)/        # Redirects toward account
-    api/             # BFF route handlers
+    api/             # BFF route handlers (cart, channel, session, teleform, auth)
   components/        # ui, layout, shared
   features/          # catalog, cart, journey, care-flow, account, …
   lib/
@@ -113,12 +112,12 @@ Do not rename route groups or replace working BFF patterns without an explicit r
 - `POST {BASE_URL}/v1/auth/api-credentials/token`
 - Implemented in `src/lib/api/astermd/auth/token-manager.ts`
 - Authenticated calls go through `asterMdFetch` + `request-gate`: other API calls wait until a usable token exists; shared in-flight token request; failures cancel queued calls
-- BFF: `/api/astermd/auth/status` (status only — no raw token)
+- BFF: `/api/auth/status` (status only — no raw token)
 
 ## Channel / Products — CURRENT
 
 - `GET {BASE_URL}/v1/sales/channels/detail/{CHANNEL_ID}`
-- Server helper: `channels.ts`; BFF: `GET /api/astermd/channel`
+- Server helper: `channels.ts`; BFF: `GET /api/channel`
 - **Only channel detail responses are cached** (≈1 day server TTL in `channel-cache.ts`). Other AsterMD calls use `cache: "no-store"`.
 - Storefront renders channel products via `ChannelProvider` / `useChannel` / catalog components
 
@@ -126,7 +125,7 @@ Do not rename route groups or replace working BFF patterns without an explicit r
 
 - `POST {BASE_URL}/v1/sales/sessions/create` with configured `channel_id`
 - `GET {BASE_URL}/v1/sales/sessions/view?session_ids=…&tz=…`
-- BFF: `POST|GET /api/astermd/session`
+- BFF: `POST|GET /api/session`
 - `SessionProvider` ensures a session on page open/navigation:
   - **No cookie** → create
   - **Cookie present** → reuse (avoid duplicate creates)
@@ -137,22 +136,20 @@ Do not rename route groups or replace working BFF patterns without an explicit r
 ## Cart — CURRENT (create/update/view wired)
 
 - Local Zustand cart (`cart-store`) — add/remove, qty always `1` (no quantity selector)
-- On add/remove/clear: BFF `POST /api/astermd/cart` syncs to AsterMD
+- On add/remove/clear: BFF `POST /api/cart` syncs to AsterMD
   - No remote cart yet → `POST /v1/sales/carts/create` with `{ session, items }` (never send `channel_id`)
   - Existing cart → `PUT /v1/sales/carts/update/{sessionUuid}` with `{ items }` only (empty `items` clears the cart)
-  - View → `GET /v1/sales/carts/view/{sessionUuid}` via `GET /api/astermd/cart`
+  - View → `GET /v1/sales/carts/view/{sessionUuid}` via `GET /api/cart`
 - Path `:id` for update/view is the **session UUID**, not the cart document `_id`
 - Session must exist first (`SessionProvider` / ensure on sync)
 
 ## Checkout — GAP / PENDING
 
-- UI route shells under `(flow)/checkout` and related journey components exist
-- **GAP:** end-to-end checkout against AsterMD / configured payment/CRM
+- Checkout UI / payment against AsterMD is **GAP**
 - Do not treat Treatment Sync as the initial payment operation
 
 ## Verification — GAP / PENDING
 
-- UI shell: `(flow)/verification`
 - Verification is **configuration-dependent** (email, address, identity, DOB, SSN, IP/geo — not all may be enabled)
 - Team context: missing/unconfigured verification integration → treat as **GAP/PENDING**
 - Never use real patient identity data; synthetic placeholders only
@@ -218,7 +215,7 @@ Product/channel mapping → Teleform/form id → schema/JSON id → schema retri
 | Session create / reuse | CURRENT | BFF + HttpOnly cookie + SessionProvider |
 | Session view / journey load | CURRENT | Via BFF GET; expiry semantics PENDING |
 | Local cart UI | CURRENT | Zustand + qty=1 |
-| AsterMD cart create/update/view | CURRENT | BFF `/api/astermd/cart` |
+| AsterMD cart create/update/view | CURRENT | BFF `/api/cart` |
 | Checkout (live) | GAP/PENDING | UI shells only |
 | Verification | GAP | Unconfigured / not end-to-end |
 | Teleform / intake (live) | PENDING | Schema-driven flow not complete |
@@ -264,7 +261,7 @@ Required configuration must be described without embedding secret values.
 
 Inferred from the repo:
 
-- App Router route groups: `(marketing)`, `(flow)`, `(account)`, …
+- App Router route groups: `(storefront)`, `(account)`, …
 - Feature folders under `src/features/*`
 - AsterMD under `src/lib/api/astermd/*` with `server-only`
 - BFF under `src/app/api/**/route.ts`

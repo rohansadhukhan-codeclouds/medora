@@ -5,6 +5,7 @@ const PATH_LABELS: Record<string, string> = {
   "/": "Home",
   "/treatments": "Treatments",
   "/cart": "Cart",
+  "/intake": "Intake",
   "/how-it-works": "How it works",
   "/faq": "FAQ",
   "/about": "About",

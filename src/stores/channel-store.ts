@@ -101,8 +101,8 @@ export const useChannelStore = create<ChannelStoreState>()(
 
         try {
           const url = force
-            ? "/api/astermd/channel?force=1"
-            : "/api/astermd/channel";
+            ? "/api/channel?force=1"
+            : "/api/channel";
           const response = await fetch(url, {
             method: "GET",
             headers: { Accept: "application/json" },

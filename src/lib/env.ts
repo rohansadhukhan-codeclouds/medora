@@ -34,6 +34,9 @@ const serverEnvSchema = z.object({
   ASTERMD_PROD_CHANNEL_ID: optionalNonEmpty,
   ASTERMD_PROD_API_KEY: optionalNonEmpty,
 
+  /** AsterMD teleform / medical intake form document id (SERVER ONLY). */
+  ASTERMD_INTAKE_FORM_ID: optionalNonEmpty,
+
   /**
    * When true (default in development), MockAsterMdService is used.
    * Set ASTERMD_USE_MOCK=false once real credentials and endpoints are ready.
@@ -70,6 +73,9 @@ function readServerEnv(): ServerEnv {
     ASTERMD_PROD_CHANNEL_ID:
       process.env.ASTERMD_PROD_CHANNEL_ID?.trim() || undefined,
     ASTERMD_PROD_API_KEY: process.env.ASTERMD_PROD_API_KEY?.trim() || undefined,
+
+    ASTERMD_INTAKE_FORM_ID:
+      process.env.ASTERMD_INTAKE_FORM_ID?.trim() || undefined,
 
     ASTERMD_USE_MOCK: process.env.ASTERMD_USE_MOCK ?? "true",
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || undefined,

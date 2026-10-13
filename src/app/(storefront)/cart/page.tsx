@@ -3,7 +3,8 @@ import { buildMetadata } from "@/config/metadata";
 
 export const metadata = buildMetadata({
   title: "Cart",
-  description: "Review the treatments you added before continuing your care journey.",
+  description:
+    "Review selected treatments, then continue to medical intake.",
   path: "/cart",
 });
 

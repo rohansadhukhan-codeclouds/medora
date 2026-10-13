@@ -89,7 +89,7 @@ async function postCartSync(items: CartItem[]): Promise<{
     return { ok: false, error: "Session is required before syncing the cart." };
   }
 
-  const response = await fetch("/api/astermd/cart", {
+  const response = await fetch("/api/cart", {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -168,7 +168,7 @@ export const useCartStore = create<CartStoreState>()(
           set({ syncStatus: "syncing", syncError: null });
           try {
             await ensureSessionId();
-            const response = await fetch("/api/astermd/cart", {
+            const response = await fetch("/api/cart", {
               method: "GET",
               headers: { Accept: "application/json" },
               cache: "no-store",
