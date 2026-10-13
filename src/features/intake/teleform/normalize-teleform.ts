@@ -20,6 +20,18 @@ function asString(value: unknown, fallback = ""): string {
   return fallback;
 }
 
+function asNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function asNumberArray(value: unknown): number[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const nums = value.filter(
+    (item): item is number => typeof item === "number" && Number.isFinite(item),
+  );
+  return nums.length ? nums : undefined;
+}
+
 function mapFieldType(raw: string): TeleformFieldType {
   const t = raw.toLowerCase().trim();
   switch (t) {
@@ -194,7 +206,23 @@ function toAsterMdField(
       multiSelect,
       paragraphContent: asString(properties?.paragraphContent) || undefined,
       paragraphAlign: asString(properties?.paragraphAlign) || undefined,
-      imageUrl: asString(properties?.imageUrl) || undefined,
+      // Preserve raw imageUrl (may contain multiple data URLs); do not trim
+      // mid-string newlines — asString only trims ends.
+      imageUrl:
+        typeof properties?.imageUrl === "string"
+          ? properties.imageUrl
+          : asString(properties?.imageUrl) || undefined,
+      imageWidth: asNumber(properties?.imageWidth),
+      imageHeight: asNumber(properties?.imageHeight),
+      imageItemWidths: asNumberArray(properties?.imageItemWidths),
+      imageItemHeights: asNumberArray(properties?.imageItemHeights),
+      imageGap: asNumber(properties?.imageGap),
+      imageFlexWrap: asString(properties?.imageFlexWrap) || undefined,
+      imageJustifyContent:
+        asString(properties?.imageJustifyContent) || undefined,
+      imageResizeMode: asString(properties?.imageResizeMode) || undefined,
+      imageHeading: asString(properties?.imageHeading) || undefined,
+      imageSubheading: asString(properties?.imageSubheading) || undefined,
       termsText: asString(properties?.termsText) || undefined,
       termsLinks: readTermsLinks(properties),
       headingFullWidth: properties?.headingFullWidth === true,

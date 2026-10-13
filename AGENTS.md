@@ -250,8 +250,8 @@ Mention **names only** (never values). Names visible in safe server env schema /
 | `APP_ENV` | No | `dev` \| `prod` credential set switch |
 | `ASTERMD_DEV_*` / `ASTERMD_PROD_*` | No | Base URL, client id, secret, channel id, api key |
 | `ASTERMD_USE_MOCK` | No | Mock vs live AsterMD service |
-| `NEXT_PUBLIC_APP_URL` | Yes | Canonical app URL |
-| `NEXT_PUBLIC_ASTERMD_CDN_URL` | Yes | Public CDN base for product images (may 403 if bucket private) |
+| `APP_URL` | Yes (via `next.config` env) | Canonical app URL |
+| `ASTERMD_CDN_URL` | Yes (via `next.config` env) | CDN base for product images (may 403 if bucket private) |
 
 Required configuration must be described without embedding secret values.
 

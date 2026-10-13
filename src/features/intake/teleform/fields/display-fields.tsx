@@ -1,5 +1,5 @@
-import Image from "next/image";
 import type { NormalizedTeleformField } from "@/features/intake/teleform/types";
+import { parseImageSources } from "@/features/intake/teleform/parse-image-sources";
 import { cn } from "@/lib/utils/cn";
 
 export function HeadingBlock({ field }: { field: NormalizedTeleformField }) {
@@ -37,31 +37,61 @@ export function ParagraphBlock({ field }: { field: NormalizedTeleformField }) {
 }
 
 export function ImageBlock({ field }: { field: NormalizedTeleformField }) {
-  const src = field.meta?.imageUrl;
-  if (!src) return null;
+  const meta = field.meta;
+  const imageSources = parseImageSources(meta?.imageUrl);
+  if (!imageSources.length) return null;
 
-  // Huge base64 assets: cap display size for performance.
-  const isData = src.startsWith("data:");
+  const heading = meta?.imageHeading?.trim();
+  const subheading = meta?.imageSubheading?.trim();
+  const objectFit =
+    meta?.imageResizeMode === "cover" ? ("cover" as const) : ("contain" as const);
+
   return (
-    <div className="sm:col-span-2 overflow-hidden rounded-2xl border border-border bg-muted">
-      {isData ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={src}
-          alt={field.label || "Form image"}
-          className="mx-auto max-h-56 w-auto object-contain"
-        />
-      ) : (
-        <div className="relative mx-auto h-56 w-full max-w-md">
-          <Image
-            src={src}
-            alt={field.label || "Form image"}
-            fill
-            className="object-contain"
-            unoptimized
-          />
-        </div>
-      )}
+    <div className="sm:col-span-2 space-y-2">
+      {heading ? (
+        <p className="text-sm font-semibold text-foreground">{heading}</p>
+      ) : null}
+      {subheading ? (
+        <p className="text-sm text-muted-foreground">{subheading}</p>
+      ) : null}
+      <div
+        className="overflow-hidden rounded-2xl border border-border bg-muted p-3"
+        style={{
+          display: "flex",
+          flexWrap: (meta?.imageFlexWrap as "wrap" | "nowrap") || "wrap",
+          justifyContent: meta?.imageJustifyContent || "center",
+          gap: meta?.imageGap ?? 10,
+          alignItems: "center",
+        }}
+      >
+        {imageSources.map((src, index) => {
+          const width =
+            meta?.imageItemWidths?.[index] ?? meta?.imageWidth ?? 100;
+          const height =
+            meta?.imageItemHeights?.[index] ?? meta?.imageHeight ?? 100;
+          const alt = heading
+            ? `${heading} ${index + 1}`
+            : field.label
+              ? `${field.label} ${index + 1}`
+              : `Image ${index + 1}`;
+
+          return (
+            // Native <img>: AsterMD often supplies inline data: URLs (incl. AVIF).
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={`${field.id || "image"}-${index}`}
+              src={src}
+              alt={alt}
+              style={{
+                width,
+                height,
+                objectFit,
+                flexShrink: 0,
+              }}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

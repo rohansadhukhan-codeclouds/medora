@@ -45,7 +45,8 @@ const serverEnvSchema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((value) => value === "true"),
-  NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  APP_URL: z.string().url().optional(),
+  ASTERMD_CDN_URL: z.string().url().optional(),
 });
 
 export type AppEnv = z.infer<typeof appEnvSchema>;
@@ -78,7 +79,8 @@ function readServerEnv(): ServerEnv {
       process.env.ASTERMD_INTAKE_FORM_ID?.trim() || undefined,
 
     ASTERMD_USE_MOCK: process.env.ASTERMD_USE_MOCK ?? "true",
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || undefined,
+    APP_URL: process.env.APP_URL?.trim() || undefined,
+    ASTERMD_CDN_URL: process.env.ASTERMD_CDN_URL?.trim() || undefined,
   });
 
   if (!parsed.success) {

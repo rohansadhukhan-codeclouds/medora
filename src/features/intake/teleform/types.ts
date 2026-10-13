@@ -81,6 +81,16 @@ export type NormalizedTeleformField = {
     paragraphContent?: string;
     paragraphAlign?: "left" | "center" | "right" | string;
     imageUrl?: string;
+    imageWidth?: number;
+    imageHeight?: number;
+    imageItemWidths?: number[];
+    imageItemHeights?: number[];
+    imageGap?: number;
+    imageFlexWrap?: string;
+    imageJustifyContent?: string;
+    imageResizeMode?: string;
+    imageHeading?: string;
+    imageSubheading?: string;
     termsText?: string;
     termsLinks?: TeleformTermsLink[];
     headingFullWidth?: boolean;

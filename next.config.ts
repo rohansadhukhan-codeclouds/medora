@@ -3,6 +3,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  // Expose non-secret public config to the client without NEXT_PUBLIC_ names.
+  env: {
+    APP_URL: process.env.APP_URL ?? "http://localhost:3000",
+    ASTERMD_CDN_URL:
+      process.env.ASTERMD_CDN_URL ?? "https://cdn.astermd.com",
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "cdn.astermd.com" },

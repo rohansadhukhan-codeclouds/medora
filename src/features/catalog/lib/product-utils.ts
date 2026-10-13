@@ -29,7 +29,7 @@ export type CatalogProduct = {
 };
 
 const CDN_BASE =
-  process.env.NEXT_PUBLIC_ASTERMD_CDN_URL?.replace(/\/+$/, "") ??
+  process.env.ASTERMD_CDN_URL?.replace(/\/+$/, "") ??
   "https://cdn.astermd.com";
 
 export function getProductImageUrl(image?: string | null): string | null {

@@ -59,7 +59,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | Variable | Public? | Purpose |
 |---|---|---|
 | `APP_ENV` | **No** | `dev` \| `prod` — switches which AsterMD credential set is used |
-| `NEXT_PUBLIC_APP_URL` | Yes | Canonical app URL for metadata/links |
+| `APP_URL` | Yes (via `next.config` env) | Canonical app URL for metadata/links |
+| `ASTERMD_CDN_URL` | Yes (via `next.config` env) | CDN base for product images |
 | `ASTERMD_DEV_*` | **No** | Dev base URL, client id, secret, channel id, api key |
 | `ASTERMD_PROD_*` | **No** | Prod base URL, client id, secret, channel id, api key |
 | `ASTERMD_USE_MOCK` | **No** | `true` uses `MockAsterMdService` |
