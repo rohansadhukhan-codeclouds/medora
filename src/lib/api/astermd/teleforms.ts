@@ -6,6 +6,7 @@ import { asterMdFetch } from "@/lib/api/astermd/http-client";
 import { getTeleformWithCache } from "@/lib/api/astermd/teleform-cache";
 import { normalizeTeleformJson } from "@/features/intake/teleform/normalize-teleform";
 import type { NormalizedTeleform } from "@/features/intake/teleform/types";
+import { getServerEnv } from "@/lib/env";
 
 export type AsterMdTeleformRecord = {
   _id?: string;
@@ -213,19 +214,46 @@ export async function bootstrapIntakeTeleform(options?: {
 }): Promise<TeleformBootstrapWithMeta> {
   const config = getAsterMdConfig();
 
+  const env = getServerEnv();
+  const missing: string[] = [];
+  if (!config.baseUrl) missing.push(`${config.appEnv === "prod" ? "ASTERMD_PROD_BASE_URL" : "ASTERMD_DEV_BASE_URL"}`);
+  if (!config.clientId) missing.push(`${config.appEnv === "prod" ? "ASTERMD_PROD_CLIENT_ID" : "ASTERMD_DEV_CLIENT_ID"}`);
+  if (!config.clientSecret) {
+    missing.push(
+      config.appEnv === "prod"
+        ? "ASTERMD_PROD_CLIENT_SECRET"
+        : "ASTERMD_DEV_CLIENT_SECRET",
+    );
+  }
+  if (!config.channelId) {
+    missing.push(
+      config.appEnv === "prod"
+        ? "ASTERMD_PROD_CHANNEL_ID"
+        : "ASTERMD_DEV_CHANNEL_ID",
+    );
+  }
+
+  // useMock is true when ASTERMD_USE_MOCK=true OR required credentials are missing.
   if (config.useMock) {
+    const reason = env.ASTERMD_USE_MOCK
+      ? "ASTERMD_USE_MOCK is true"
+      : `required AsterMD credentials missing for APP_ENV=${config.appEnv}${
+          missing.length ? ` (${missing.join(", ")})` : ""
+        }`;
+    console.error(`[AsterMD] teleform blocked — ${reason}`);
     throw new AsterMdError({
       code: "provider_unavailable",
-      message: "Teleform APIs require live AsterMD (ASTERMD_USE_MOCK=false)",
-      userMessage:
-        "Intake is unavailable while AsterMD is running in mock mode.",
+      message: `Teleform APIs require live AsterMD (${reason})`,
+      userMessage: env.ASTERMD_USE_MOCK
+        ? "Intake is unavailable while AsterMD is running in mock mode. Set ASTERMD_USE_MOCK=false on the server."
+        : `Intake is unavailable because AsterMD credentials are incomplete for APP_ENV=${config.appEnv}.`,
     });
   }
 
-  if (!config.baseUrl || !config.clientId || !config.clientSecret) {
+  if (missing.length) {
     throw new AsterMdError({
       code: "validation_error",
-      message: "AsterMD credentials are not configured",
+      message: `AsterMD credentials are not configured: ${missing.join(", ")}`,
       userMessage: "Care partner configuration is missing.",
     });
   }
@@ -235,7 +263,8 @@ export async function bootstrapIntakeTeleform(options?: {
     throw new AsterMdError({
       code: "validation_error",
       message: "ASTERMD_INTAKE_FORM_ID is not configured",
-      userMessage: "Intake form id is not configured.",
+      userMessage:
+        "Intake form id is not configured. Set ASTERMD_INTAKE_FORM_ID on the server.",
     });
   }
 
