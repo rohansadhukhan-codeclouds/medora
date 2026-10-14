@@ -266,17 +266,15 @@ function ButtonAdapter({
   accentColor,
   onButtonAction,
 }: FieldRenderProps) {
-  const action = (field.meta?.buttonAction || "").toLowerCase();
-  const isBack =
-    action === "previous_page" ||
-    action === "back" ||
-    /back/i.test(field.label);
-
   return (
     <ButtonField
       field={field}
       accentColor={accentColor}
-      disabled={isBack && pageIndex === 0}
+      disabled={
+        (/back|previous/i.test(field.label || "") ||
+          field.meta?.buttonAction === "previous_page") &&
+        pageIndex === 0
+      }
       onAction={(nextAction) => onButtonAction?.(nextAction)}
     />
   );

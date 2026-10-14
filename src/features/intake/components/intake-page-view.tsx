@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ClipboardList } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
+import { saveTeleformDraft } from "@/features/intake/draft-storage";
 import { DynamicFormRenderer } from "@/features/intake/teleform/dynamic-form-renderer";
 import { IntakeLoading } from "@/features/intake/teleform/intake-loading";
+import type { TeleformValues } from "@/features/intake/teleform/types";
 
 type TeleformBootstrapResponse = {
   ok: boolean;
@@ -23,6 +26,7 @@ function readFormName(formJson: unknown): string | null {
 }
 
 export function IntakePageView() {
+  const router = useRouter();
   const [percent, setPercent] = useState(6);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
@@ -32,6 +36,14 @@ export function IntakePageView() {
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Avoid Date.now() during render — breaks Next.js prerender purity checks.
   const startedAt = useRef(0);
+
+  const handleTeleformSubmit = (
+    values: TeleformValues,
+    metadata: { formId?: string; version?: number; title?: string },
+  ) => {
+    saveTeleformDraft(values, metadata);
+    router.push("/intake/information");
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -154,6 +166,7 @@ export function IntakePageView() {
                 <DynamicFormRenderer
                   formDefinition={formJson}
                   showFormTitle={false}
+                  onSubmit={handleTeleformSubmit}
                 />
               </div>
             </Reveal>

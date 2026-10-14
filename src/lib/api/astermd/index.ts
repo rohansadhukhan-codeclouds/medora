@@ -27,6 +27,11 @@ export {
   viewSalesCart,
   syncSalesCart,
 } from "@/lib/api/astermd/carts";
+export { verifyEmailAddress } from "@/lib/api/astermd/email-verify";
+export type {
+  EmailVerifyOutcome,
+  EmailVerifyResultCode,
+} from "@/lib/api/astermd/email-verify";
 export type { AsterMdService } from "@/lib/api/astermd/service";
 export type {
   AsterMdCartApiResponse,

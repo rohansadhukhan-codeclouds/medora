@@ -22,6 +22,9 @@ export const ASTERMD_ENDPOINTS = {
    */
   teleformsViewUrl: (formJsonIdentifier: string) =>
     `/v1/sales/teleforms/view-url/${encodeURIComponent(formJsonIdentifier)}`,
+  /** Debounce email verification (query: email). Results cached ~6 months server-side by AsterMD. */
+  emailVerify: (email: string) =>
+    `/v1/platform/extensions/email-verify?email=${encodeURIComponent(email)}`,
 
   // Remaining domain paths stay placeholders until wired from docs/SDK.
   patients: "/v1/sales/patients",

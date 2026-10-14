@@ -132,7 +132,12 @@ async function executeAsterMdRequest<T>(
       | null;
 
     if (!response.ok) {
-      console.error("[AsterMD]", method, options.path, response.status);
+      console.error(
+        "[AsterMD]",
+        method,
+        safeEndpointPath(options.path),
+        response.status,
+      );
 
       const apiMessage =
         (typeof payload?.message === "string" && payload.message) ||

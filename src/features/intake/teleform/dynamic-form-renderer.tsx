@@ -146,19 +146,27 @@ export function DynamicFormRenderer({
   };
 
   const handleButtonAction = (action: string | undefined) => {
-    const normalized = (action || "").toLowerCase();
-    if (normalized === "previous_page" || normalized === "back") {
+    const normalized = (action || "").toLowerCase().replace(/[\s-]+/g, "_");
+    if (
+      normalized === "previous_page" ||
+      normalized === "previouspage" ||
+      normalized === "back" ||
+      normalized === "prev"
+    ) {
       setErrors({});
       goToPage(safePageIndex - 1);
       return;
     }
     if (
       normalized === "next_page" ||
+      normalized === "nextpage" ||
+      normalized === "next" ||
       normalized === "continue" ||
       normalized === "submit" ||
       !normalized
     ) {
-      goNext(normalized === "submit");
+      // Last page Next often has schema action "none" but still means finish.
+      goNext(normalized === "submit" || safePageIndex >= pageCount - 1);
       return;
     }
     if (normalized === "none") return;
@@ -181,7 +189,6 @@ export function DynamicFormRenderer({
 
     const isLast = forceSubmit || safePageIndex >= pageCount - 1;
     if (isLast) {
-      setDone(true);
       const metadata = {
         formId: form.formId,
         version: form.version,
@@ -189,6 +196,8 @@ export function DynamicFormRenderer({
       };
       onSubmit?.(values, metadata);
       onComplete?.(values);
+      // Parent owns navigation when onSubmit is provided (e.g. → information page).
+      if (!onSubmit) setDone(true);
       return;
     }
     goToPage(safePageIndex + 1);
