@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { buildMetadata } from "@/config/metadata";
+import { DevInspectorGate } from "@/features/dev-inspector/dev-inspector-gate";
 import { ChannelProvider } from "@/providers/channel-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { SessionProvider } from "@/providers/session-provider";
@@ -28,7 +29,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans">
         <QueryProvider>
           <SessionProvider>
-            <ChannelProvider>{children}</ChannelProvider>
+            <ChannelProvider>
+              {children}
+              <DevInspectorGate />
+            </ChannelProvider>
           </SessionProvider>
         </QueryProvider>
       </body>

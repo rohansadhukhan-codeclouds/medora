@@ -6,6 +6,16 @@ import {
 import { enqueueAuthenticatedCall } from "@/lib/api/astermd/auth/request-gate";
 import { getAsterMdConfig } from "@/lib/api/astermd/config";
 import { AsterMdError, normalizeAsterMdError } from "@/lib/api/astermd/errors";
+import {
+  createDebugCallId,
+  recordDevApiCall,
+} from "@/lib/dev-inspector/server-trace-store";
+import {
+  safeEndpointPath,
+  safeErrorMessage,
+  sanitizeDebugData,
+} from "@/lib/dev-inspector/sanitize";
+import { isDevAppEnv } from "@/lib/env";
 
 type AsterMdRequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -104,10 +114,13 @@ async function executeAsterMdRequest<T>(
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+  const method = options.method ?? "GET";
+  const startedAt = isDevAppEnv() ? Date.now() : 0;
+  const shouldTrace = isDevAppEnv() && !options.skipAuth;
 
   try {
     const response = await fetch(url, {
-      method: options.method ?? "GET",
+      method,
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: controller.signal,
@@ -119,7 +132,7 @@ async function executeAsterMdRequest<T>(
       | null;
 
     if (!response.ok) {
-      console.error("[AsterMD]", options.method ?? "GET", options.path, response.status);
+      console.error("[AsterMD]", method, options.path, response.status);
 
       const apiMessage =
         (typeof payload?.message === "string" && payload.message) ||
@@ -129,6 +142,22 @@ async function executeAsterMdRequest<T>(
           typeof payload.error.message === "string" &&
           payload.error.message) ||
         null;
+
+      if (shouldTrace) {
+        void recordDevApiCall({
+          id: createDebugCallId(),
+          source: "AsterMD",
+          method,
+          endpoint: safeEndpointPath(options.path),
+          status: response.status,
+          durationMs: Date.now() - startedAt,
+          timestamp: new Date().toISOString(),
+          requestHeaders: sanitizeDebugData(headers),
+          request: sanitizeDebugData(options.body),
+          response: sanitizeDebugData(payload),
+          error: apiMessage || `HTTP ${response.status}`,
+        });
+      }
 
       throw new AsterMdError({
         code:
@@ -140,7 +169,7 @@ async function executeAsterMdRequest<T>(
                 ? "validation_error"
                 : "provider_unavailable",
         status: response.status,
-        message: `AsterMD request failed: ${options.method ?? "GET"} ${options.path}`,
+        message: `AsterMD request failed: ${method} ${options.path}`,
         userMessage:
           apiMessage ||
           "Our care partner is temporarily unavailable. Please try again shortly.",
@@ -148,8 +177,40 @@ async function executeAsterMdRequest<T>(
       });
     }
 
+    if (shouldTrace) {
+      void recordDevApiCall({
+        id: createDebugCallId(),
+        source: "AsterMD",
+        method,
+        endpoint: safeEndpointPath(options.path),
+        status: response.status,
+        durationMs: Date.now() - startedAt,
+        timestamp: new Date().toISOString(),
+        requestHeaders: sanitizeDebugData(headers),
+        request: sanitizeDebugData(options.body),
+        response: sanitizeDebugData(payload),
+      });
+    }
+
     return (payload ?? ({} as T)) as T;
   } catch (error) {
+    // HTTP error responses are already traced above; only record transport failures.
+    if (shouldTrace && !(error instanceof AsterMdError)) {
+      const normalized = normalizeAsterMdError(error);
+      void recordDevApiCall({
+        id: createDebugCallId(),
+        source: "AsterMD",
+        method,
+        endpoint: safeEndpointPath(options.path),
+        status: normalized.status,
+        durationMs: Date.now() - startedAt,
+        timestamp: new Date().toISOString(),
+        requestHeaders: sanitizeDebugData(headers),
+        request: sanitizeDebugData(options.body),
+        error: safeErrorMessage(normalized),
+      });
+      throw normalized;
+    }
     throw normalizeAsterMdError(error);
   } finally {
     clearTimeout(timeout);
