@@ -10,7 +10,10 @@ import { Reveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateOfBirthField } from "@/features/intake/components/date-of-birth-field";
 import { Field } from "@/features/intake/components/field";
+import { PhoneCountryField } from "@/features/intake/components/phone-country-field";
+import { DEFAULT_PHONE_COUNTRY_ISO } from "@/features/intake/data/country-dial-codes";
 import {
   hasTeleformDraft,
   readIntakeDraft,
@@ -34,6 +37,7 @@ export function PatientInfoPageView() {
     register,
     handleSubmit,
     reset,
+    setValue,
     trigger,
     watch,
     formState: { errors, isValid },
@@ -44,8 +48,12 @@ export function PatientInfoPageView() {
   });
 
   const emailValue = watch("email");
+  const phoneValue = watch("phone");
+  const phoneCountryIso = watch("phoneCountryIso");
+  const dateOfBirthValue = watch("dateOfBirth");
   const emailVerify = useEmailVerify(emailValue ?? "");
   const canCheckout = isValid && emailVerify.isVerified;
+  const phoneField = register("phone");
 
   useEffect(() => {
     if (!hasTeleformDraft()) {
@@ -54,7 +62,12 @@ export function PatientInfoPageView() {
     }
     const draft = readIntakeDraft();
     if (draft?.patientInfo) {
-      reset(draft.patientInfo);
+      reset({
+        ...emptyPatientInfoValues,
+        ...draft.patientInfo,
+        phoneCountryIso:
+          draft.patientInfo.phoneCountryIso || DEFAULT_PHONE_COUNTRY_ISO,
+      });
       void trigger();
     }
     setReady(true);
@@ -101,8 +114,8 @@ export function PatientInfoPageView() {
                 Information
               </h1>
               <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-                Tell us how to reach you. Checkout unlocks after these fields are
-                complete and your email is verified.
+                Checkout unlocks after these fields are complete and your email
+                is verified.
               </p>
             </div>
           </div>
@@ -227,23 +240,42 @@ export function PatientInfoPageView() {
                 )}
               </div>
 
-              <Field<PatientInfoValues>
+              <PhoneCountryField
                 id="patient-phone"
                 label="Phone"
-                name="phone"
-                type="tel"
-                register={register}
-                error={errors.phone?.message}
-                placeholder="Phone number"
+                countryIso={phoneCountryIso || DEFAULT_PHONE_COUNTRY_ISO}
+                phone={phoneValue ?? ""}
+                phoneError={errors.phone?.message}
+                phoneRef={phoneField.ref}
+                onCountryChange={(iso2) => {
+                  setValue("phoneCountryIso", iso2.toUpperCase(), {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                }}
+                onPhoneChange={(next) => {
+                  setValue("phone", next, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                }}
+                onPhoneBlur={phoneField.onBlur}
               />
 
-              <Field<PatientInfoValues>
+              <DateOfBirthField
                 id="patient-dateOfBirth"
                 label="Date of birth"
-                name="dateOfBirth"
-                type="date"
-                register={register}
+                value={dateOfBirthValue ?? ""}
                 error={errors.dateOfBirth?.message}
+                onChange={(isoDate) => {
+                  setValue("dateOfBirth", isoDate, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                }}
+                onBlur={() => {
+                  void trigger("dateOfBirth");
+                }}
               />
 
               <Field<PatientInfoValues>

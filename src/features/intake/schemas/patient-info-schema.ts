@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_PHONE_COUNTRY_ISO } from "@/features/intake/data/country-dial-codes";
 
 /**
  * Contact / identity fields collected after teleform answers.
@@ -10,6 +11,9 @@ export const patientInfoSchema = z.object({
   // Format/validity comes from AsterMD email-verify after debounce — don't block typing.
   email: z.string().min(1, "Email is required"),
   address: z.string().min(1, "Address is required"),
+  phoneCountryIso: z
+    .string()
+    .length(2, "Select a country code"),
   phone: z
     .string()
     .min(7, "Enter a valid phone number")
@@ -37,6 +41,7 @@ export const emptyPatientInfoValues: PatientInfoValues = {
   name: "",
   email: "",
   address: "",
+  phoneCountryIso: DEFAULT_PHONE_COUNTRY_ISO,
   phone: "",
   dateOfBirth: "",
 };

@@ -380,3 +380,79 @@
     transition: none;
   }
 }
+
+/* ── Date of birth picker (react-day-picker) ───────────────────────── */
+.medora-dob-picker.rdp-root {
+  --rdp-accent-color: var(--primary);
+  --rdp-accent-background-color: var(--primary-muted);
+  --rdp-today-color: var(--primary);
+  --rdp-selected-border: 2px solid var(--primary);
+  --rdp-day-height: 2.35rem;
+  --rdp-day-width: 2.35rem;
+  --rdp-day_button-height: 2.2rem;
+  --rdp-day_button-width: 2.2rem;
+  --rdp-day_button-border-radius: 999px;
+  --rdp-nav_button-height: 2rem;
+  --rdp-nav_button-width: 2rem;
+  --rdp-nav-height: 2.5rem;
+  --rdp-dropdown-gap: 0.4rem;
+  color: var(--foreground);
+  font-size: 0.875rem;
+}
+
+.medora-dob-picker .rdp-month_caption {
+  font-weight: 600;
+}
+
+.medora-dob-picker .rdp-dropdowns {
+  gap: 0.4rem;
+}
+
+.medora-dob-picker .rdp-dropdown_root {
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--card);
+  padding: 0.15rem 0.35rem;
+}
+
+.medora-dob-picker .rdp-dropdown {
+  font-weight: 500;
+  color: var(--foreground);
+  background: transparent;
+}
+
+.medora-dob-picker .rdp-weekday {
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.medora-dob-picker .rdp-day_button:hover:not([disabled]):not([aria-selected="true"]) {
+  background: var(--accent);
+}
+
+.medora-dob-picker .rdp-selected .rdp-day_button {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+  font-weight: 600;
+}
+
+.medora-dob-picker .rdp-today:not(.rdp-selected) .rdp-day_button {
+  font-weight: 700;
+}
+
+.medora-dob-picker .rdp-button_previous,
+.medora-dob-picker .rdp-button_next {
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.medora-dob-picker .rdp-button_previous:hover:not([disabled]),
+.medora-dob-picker .rdp-button_next:hover:not([disabled]) {
+  background: var(--accent);
+}
