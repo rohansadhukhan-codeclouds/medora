@@ -2,6 +2,7 @@
 
 import type { ComponentType } from "react";
 import { BmiField } from "@/features/intake/teleform/fields/bmi-field";
+import { ButtonField } from "@/features/intake/teleform/fields/button-field";
 import { CheckboxField } from "@/features/intake/teleform/fields/checkbox-field";
 import { ChoiceField } from "@/features/intake/teleform/fields/choice-field";
 import { ContentBlock } from "@/features/intake/teleform/fields/content-block";
@@ -30,7 +31,9 @@ export type FieldRenderProps = {
   error?: string;
   pageIndex: number;
   pageCount: number;
+  accentColor?: string;
   onChange: (name: string, value: TeleformValues[string]) => void;
+  onButtonAction?: (action: string | undefined) => void;
 };
 
 export type FieldComponent = ComponentType<FieldRenderProps>;
@@ -257,9 +260,26 @@ function ContentAdapter({ field }: FieldRenderProps) {
   return <ContentBlock field={field} />;
 }
 
-function ButtonAdapter() {
-  // Nav buttons are owned by DynamicFormRenderer chrome.
-  return null;
+function ButtonAdapter({
+  field,
+  pageIndex,
+  accentColor,
+  onButtonAction,
+}: FieldRenderProps) {
+  const action = (field.meta?.buttonAction || "").toLowerCase();
+  const isBack =
+    action === "previous_page" ||
+    action === "back" ||
+    /back/i.test(field.label);
+
+  return (
+    <ButtonField
+      field={field}
+      accentColor={accentColor}
+      disabled={isBack && pageIndex === 0}
+      onAction={(nextAction) => onButtonAction?.(nextAction)}
+    />
+  );
 }
 
 function UnsupportedAdapter({ field }: FieldRenderProps) {

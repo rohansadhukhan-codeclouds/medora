@@ -11,27 +11,32 @@ function isFiniteNumber(value: unknown): value is number {
 
 /**
  * Whitelist-only style mapper — never spread raw API properties into style.
+ * Heading colors come from AsterMD properties when present.
  */
 export function getHeadingStyles(
   field: NormalizedTeleformField,
 ): CSSProperties {
   const meta = field.meta;
-  const style: CSSProperties = {};
+  const style: CSSProperties = {
+    textAlign: "center",
+  };
   if (isCssColor(meta?.fieldBackgroundColor)) {
     style.backgroundColor = meta.fieldBackgroundColor;
-  } else {
-    style.backgroundColor = "var(--primary)";
   }
   if (isCssColor(meta?.titleColor)) {
     style.color = meta.titleColor;
-  } else {
-    style.color = "#fff";
   }
   if (isFiniteNumber(meta?.headingBorderRadius)) {
     style.borderRadius = meta.headingBorderRadius;
   }
   if (isFiniteNumber(meta?.titleFontSize)) {
     style.fontSize = meta.titleFontSize;
+  }
+  if (
+    typeof meta?.titleFontWeight === "number" ||
+    typeof meta?.titleFontWeight === "string"
+  ) {
+    style.fontWeight = meta.titleFontWeight;
   }
   return style;
 }

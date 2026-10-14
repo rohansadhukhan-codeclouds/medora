@@ -11,11 +11,14 @@ import {
 import { cn } from "@/lib/utils/cn";
 
 export function HeadingBlock({ field }: { field: NormalizedTeleformField }) {
+  const hasBackground = Boolean(field.meta?.fieldBackgroundColor);
+
   return (
     <div
       className={cn(
         fieldLayoutClass(field.meta?.cols, true),
-        "rounded-xl px-4 py-3",
+        "px-4 py-3 text-center",
+        hasBackground && "rounded-xl",
         field.meta?.headingFullWidth && "w-full",
       )}
       style={getHeadingStyles(field)}
@@ -196,16 +199,22 @@ export function FormProgressBlock({
 }) {
   const meta = field?.meta;
   const safeTotal = Math.max(total, 1);
-  const percent = Math.round(((current + 1) / safeTotal) * 100);
+  // Step 1 (index 0) starts at 0%; last step reaches 100%.
+  const percent =
+    safeTotal <= 1
+      ? 0
+      : Math.round((current / (safeTotal - 1)) * 100);
   const showMeta = meta?.progressShowMeta !== false;
-  const barColor = meta?.progressColor || "var(--primary)";
-  const mode = (meta?.progressDisplayMode || "percentage").toLowerCase();
+  const accent = meta?.progressColor || "#14b8a6";
+  const track = "#d7dee8";
+  const muted = "#8b9bb0";
+  const steps = Array.from({ length: safeTotal }, (_, index) => index);
 
   return (
     <div
       className={cn(
         fieldLayoutClass(meta?.cols, true),
-        "space-y-2 rounded-xl px-3 py-2",
+        "rounded-xl px-1 py-3 sm:px-2",
         meta?.progressShowBorder && "border border-border",
       )}
       style={{
@@ -215,28 +224,54 @@ export function FormProgressBlock({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={percent}
-      aria-label={`Form progress ${percent}%`}
+      aria-label={`Form progress ${percent}% completed`}
     >
-      {showMeta ? (
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            {mode === "steps" || mode === "step"
-              ? `Step ${current + 1} of ${safeTotal}`
-              : "Progress"}
-          </span>
-          <span className="font-medium text-foreground">
-            {mode === "steps" || mode === "step"
-              ? `${current + 1}/${safeTotal}`
-              : `${percent}%`}
-          </span>
-        </div>
-      ) : null}
-      <div className="h-2 overflow-hidden rounded-full bg-muted">
+      <div className="relative px-3 sm:px-4">
+        {/* Connector track + fill (behind circles) */}
         <div
-          className="h-full rounded-full transition-all duration-[var(--motion-normal)]"
-          style={{ width: `${percent}%`, backgroundColor: barColor }}
-        />
+          className="pointer-events-none absolute top-1/2 right-3 left-3 h-1.5 -translate-y-1/2 sm:right-4 sm:left-4"
+          aria-hidden="true"
+        >
+          <div
+            className="h-full w-full rounded-full"
+            style={{ backgroundColor: track }}
+          />
+          <div
+            className="absolute inset-y-0 left-0 rounded-full transition-all duration-[var(--motion-normal)]"
+            style={{ width: `${percent}%`, backgroundColor: accent }}
+          />
+        </div>
+
+        <ol className="relative z-10 flex items-center justify-between">
+          {steps.map((index) => {
+            const stepNumber = index + 1;
+            const isActive = index === current;
+            const isCompleted = index < current;
+
+            return (
+              <li key={stepNumber} className="flex shrink-0 items-center">
+                <span
+                  className="flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-semibold sm:h-9 sm:w-9"
+                  style={{
+                    backgroundColor: isCompleted ? accent : "#fff",
+                    borderColor: isActive || isCompleted ? accent : track,
+                    color: isCompleted ? "#fff" : isActive ? accent : muted,
+                  }}
+                  aria-current={isActive ? "step" : undefined}
+                >
+                  {stepNumber}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
       </div>
+
+      {showMeta ? (
+        <p className="mt-3 px-3 text-sm text-[#6b7c90] sm:px-4">
+          {percent}% completed
+        </p>
+      ) : null}
     </div>
   );
 }

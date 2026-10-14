@@ -31,6 +31,8 @@ export type DynamicFormRendererProps = {
   ) => void;
   /** @deprecated Prefer onSubmit */
   onComplete?: (values: TeleformValues) => void;
+  /** When false, skip rendering formName/title inside the card (page owns the heading). */
+  showFormTitle?: boolean;
 };
 
 function emptyValues(form: NormalizedTeleform): TeleformValues {
@@ -89,6 +91,7 @@ export function DynamicFormRenderer({
   onValidationError,
   onSubmit,
   onComplete,
+  showFormTitle = true,
 }: DynamicFormRendererProps) {
   const form = useMemo(
     () => normalizeTeleformJson(formDefinition ?? schema),
@@ -116,14 +119,10 @@ export function DynamicFormRenderer({
   const pageCount = visiblePages.length;
 
   const navButtons = (page?.fields ?? []).filter((f) => f.type === "button");
-  const backButton =
-    navButtons.find((b) => b.meta?.buttonAction === "previous_page") ||
-    navButtons.find((b) => /back/i.test(b.label));
+  const hasSchemaButtons = navButtons.length > 0;
   const nextButton =
     navButtons.find((b) => b.meta?.buttonAction === "next_page") ||
-    navButtons.find((b) =>
-      /next|continue|submit/i.test(b.label),
-    );
+    navButtons.find((b) => /next|continue|submit/i.test(b.label));
 
   const updateValues = (next: TeleformValues) => {
     setValues(next);
@@ -210,13 +209,14 @@ export function DynamicFormRenderer({
   const submitLabel =
     form.settings?.submitButtonText ||
     (nextButton ? buttonLabel(nextButton, "Submit") : "Submit");
+  const accentColor = form.settings?.accentColor || "var(--primary)";
 
   return (
     <div
       className={cn("space-y-6 rounded-2xl", className)}
       style={getFormThemeStyle(form.settings)}
     >
-      {form.title ? (
+      {showFormTitle && form.title ? (
         <div>
           <h2 className="text-xl font-semibold text-foreground">{form.title}</h2>
           {form.description ? (
@@ -233,7 +233,9 @@ export function DynamicFormRenderer({
         errors={errors}
         pageIndex={safePageIndex}
         pageCount={pageCount}
+        accentColor={accentColor}
         onChange={onFieldChange}
+        onButtonAction={handleButtonAction}
       />
 
       {done && form.settings?.successMessage ? (
@@ -252,53 +254,43 @@ export function DynamicFormRenderer({
         </p>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
-        <div>
-          {safePageIndex > 0 || backButton ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={goBack}
-              disabled={safePageIndex === 0}
-              style={
-                backButton?.meta?.buttonColor
-                  ? {
-                      borderColor: backButton.meta.buttonColor,
-                      color: backButton.meta.buttonColor,
-                    }
-                  : undefined
-              }
-            >
-              {backButton ? buttonLabel(backButton, "← Back") : "← Back"}
-            </Button>
-          ) : (
-            <span />
-          )}
+      {/* Fallback chrome only when the schema page has no button fields. */}
+      {!hasSchemaButtons ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
+          <div>
+            {safePageIndex > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={goBack}
+                style={{
+                  borderColor: accentColor,
+                  color: accentColor,
+                }}
+              >
+                ← Back
+              </Button>
+            ) : (
+              <span />
+            )}
+          </div>
+          <Button
+            type="button"
+            onClick={() =>
+              handleButtonAction(
+                safePageIndex >= pageCount - 1 ? "submit" : "next_page",
+              )
+            }
+            style={{
+              backgroundColor: accentColor,
+              borderColor: accentColor,
+              color: "#fff",
+            }}
+          >
+            {safePageIndex >= pageCount - 1 ? submitLabel : "Next step →"}
+          </Button>
         </div>
-        <Button
-          type="button"
-          onClick={() =>
-            handleButtonAction(
-              nextButton?.meta?.buttonAction ||
-                (safePageIndex >= pageCount - 1 ? "submit" : "next_page"),
-            )
-          }
-          style={
-            nextButton?.meta?.buttonColor
-              ? {
-                  backgroundColor: nextButton.meta.buttonColor,
-                  color: nextButton.meta.buttonTextColor || "#fff",
-                }
-              : undefined
-          }
-        >
-          {safePageIndex >= pageCount - 1
-            ? submitLabel
-            : nextButton
-              ? buttonLabel(nextButton, "Next step →")
-              : "Next step →"}
-        </Button>
-      </div>
+      ) : null}
     </div>
   );
 }

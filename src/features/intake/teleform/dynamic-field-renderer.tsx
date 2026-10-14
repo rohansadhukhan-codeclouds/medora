@@ -12,7 +12,9 @@ type Props = {
   error?: string;
   pageIndex: number;
   pageCount: number;
+  accentColor?: string;
   onChange: (name: string, value: TeleformValues[string]) => void;
+  onButtonAction?: (action: string | undefined) => void;
 };
 
 export function DynamicFieldRenderer({
@@ -21,7 +23,9 @@ export function DynamicFieldRenderer({
   error,
   pageIndex,
   pageCount,
+  accentColor,
   onChange,
+  onButtonAction,
 }: Props) {
   const Renderer = fieldRegistry[field.type] ?? fieldRegistry.unknown;
 
@@ -32,7 +36,9 @@ export function DynamicFieldRenderer({
       error={error}
       pageIndex={pageIndex}
       pageCount={pageCount}
+      accentColor={accentColor}
       onChange={onChange}
+      onButtonAction={onButtonAction}
     />
   );
 }

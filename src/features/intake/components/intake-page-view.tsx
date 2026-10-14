@@ -16,6 +16,12 @@ type TeleformBootstrapResponse = {
 
 const MIN_LOADER_MS = 1800;
 
+function readFormName(formJson: unknown): string | null {
+  if (!formJson || typeof formJson !== "object") return null;
+  const name = (formJson as { formName?: unknown }).formName;
+  return typeof name === "string" && name.trim() ? name.trim() : null;
+}
+
 export function IntakePageView() {
   const [percent, setPercent] = useState(6);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
@@ -66,6 +72,8 @@ export function IntakePageView() {
 
         setPercent(100);
         setFormJson(payload.formJson);
+        // Schema used to construct DynamicFormRenderer (not patient answers).
+        console.log("[intake] teleform formJson", payload.formJson);
         await new Promise((resolve) => setTimeout(resolve, 280));
         if (cancelled) return;
         setStatus("ready");
@@ -111,7 +119,7 @@ export function IntakePageView() {
             <div>
               <p className="text-sm font-medium text-primary">Medical intake</p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Intake form
+                {readFormName(formJson) || "Intake form"}
               </h1>
             </div>
           </div>
@@ -143,7 +151,10 @@ export function IntakePageView() {
           {status === "ready" && formJson ? (
             <Reveal trigger="mount">
               <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-                <DynamicFormRenderer formDefinition={formJson} />
+                <DynamicFormRenderer
+                  formDefinition={formJson}
+                  showFormTitle={false}
+                />
               </div>
             </Reveal>
           ) : null}
