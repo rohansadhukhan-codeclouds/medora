@@ -69,7 +69,7 @@ export function ImageBlock({ field }: { field: NormalizedTeleformField }) {
         <p className="text-sm text-muted-foreground">{subheading}</p>
       ) : null}
       <div
-        className="overflow-hidden rounded-2xl border border-border bg-muted p-3"
+        className="overflow-hidden p-0"
         style={{
           display: "flex",
           flexDirection:
