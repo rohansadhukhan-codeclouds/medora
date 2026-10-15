@@ -16,14 +16,19 @@ import {
 import { RadioField } from "@/features/intake/teleform/fields/radio-field";
 import { SelectField } from "@/features/intake/teleform/fields/select-field";
 import { TermsField } from "@/features/intake/teleform/fields/terms-field";
+import { DatePickerTeleformField } from "@/features/intake/teleform/fields/date-picker-teleform-field";
+import { EmailVerifyField } from "@/features/intake/teleform/fields/email-verify-field";
+import { PhoneCountryTeleformField } from "@/features/intake/teleform/fields/phone-country-teleform-field";
 import { TextField } from "@/features/intake/teleform/fields/text-field";
 import { TextareaField } from "@/features/intake/teleform/fields/textarea-field";
 import { UnsupportedField } from "@/features/intake/teleform/fields/unsupported-field";
+import { phoneCountryIsoKey } from "@/features/intake/teleform/field-meta";
 import type {
   NormalizedTeleformField,
   TeleformFieldType,
   TeleformValues,
 } from "@/features/intake/teleform/types";
+import { DEFAULT_PHONE_COUNTRY_ISO } from "@/features/intake/data/country-dial-codes";
 
 export type FieldRenderProps = {
   field: NormalizedTeleformField;
@@ -76,24 +81,26 @@ function TextAdapter({ field, values, error, onChange }: FieldRenderProps) {
 
 function EmailAdapter(props: FieldRenderProps) {
   return (
-    <TextField
+    <EmailVerifyField
       field={props.field}
-      inputType="email"
       value={asString(props.values[props.field.name])}
       error={props.error}
-      onChange={(value) => props.onChange(props.field.name, value)}
+      onChange={props.onChange}
     />
   );
 }
 
 function PhoneAdapter(props: FieldRenderProps) {
+  const countryKey = phoneCountryIsoKey(props.field.name);
   return (
-    <TextField
+    <PhoneCountryTeleformField
       field={props.field}
-      inputType="tel"
       value={asString(props.values[props.field.name])}
+      countryIso={
+        asString(props.values[countryKey]) || DEFAULT_PHONE_COUNTRY_ISO
+      }
       error={props.error}
-      onChange={(value) => props.onChange(props.field.name, value)}
+      onChange={props.onChange}
     />
   );
 }
@@ -112,9 +119,8 @@ function NumberAdapter(props: FieldRenderProps) {
 
 function DateAdapter(props: FieldRenderProps) {
   return (
-    <TextField
+    <DatePickerTeleformField
       field={props.field}
-      inputType="date"
       value={asString(props.values[props.field.name])}
       error={props.error}
       onChange={(value) => props.onChange(props.field.name, value)}

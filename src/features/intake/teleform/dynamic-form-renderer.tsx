@@ -7,6 +7,8 @@ import { DynamicPageRenderer } from "@/features/intake/teleform/dynamic-page-ren
 import { normalizeTeleformJson } from "@/features/intake/teleform/normalize-teleform";
 import { getFormThemeStyle } from "@/features/intake/teleform/styles";
 import { validateFields } from "@/features/intake/teleform/validation";
+import { DEFAULT_PHONE_COUNTRY_ISO } from "@/features/intake/data/country-dial-codes";
+import { phoneCountryIsoKey } from "@/features/intake/teleform/field-meta";
 import {
   isAnswerField,
   type NormalizedTeleform,
@@ -54,6 +56,9 @@ function emptyValues(form: NormalizedTeleform): TeleformValues {
         values[field.name] = { unit, height: "", weight: "" };
       } else {
         values[field.name] = "";
+        if (field.type === "tel" || field.type === "phone") {
+          values[phoneCountryIsoKey(field.name)] = DEFAULT_PHONE_COUNTRY_ISO;
+        }
       }
     }
   }

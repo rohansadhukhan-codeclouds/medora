@@ -4,18 +4,16 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { format, isValid, parseISO } from "date-fns";
 import { CalendarDays, ChevronDown } from "lucide-react";
 import { DayPicker } from "react-day-picker";
-import { Label } from "@/components/ui/label";
+import { FieldShell } from "@/features/intake/teleform/fields/field-shell";
+import type { NormalizedTeleformField } from "@/features/intake/teleform/types";
 import { cn } from "@/lib/utils/cn";
 import "react-day-picker/style.css";
 
 type Props = {
-  id?: string;
-  label?: string;
+  field: NormalizedTeleformField;
   value: string;
   error?: string;
-  onChange: (isoDate: string) => void;
-  onBlur?: () => void;
-  className?: string;
+  onChange: (value: string) => void;
 };
 
 function toIsoDate(date: Date): string {
@@ -28,19 +26,15 @@ function parseValue(value: string): Date | undefined {
   return isValid(parsed) ? parsed : undefined;
 }
 
-export function DateOfBirthField({
-  id = "patient-dateOfBirth",
-  label = "Date of birth",
+export function DatePickerTeleformField({
+  field,
   value,
   error,
   onChange,
-  onBlur,
-  className,
 }: Props) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-
   const selected = parseValue(value);
   const today = useMemo(() => {
     const d = new Date();
@@ -48,26 +42,20 @@ export function DateOfBirthField({
     return d;
   }, []);
   const startMonth = useMemo(() => new Date(1920, 0), []);
-  const endMonth = useMemo(() => new Date(), []);
-  const defaultMonth = selected ?? new Date(1995, 0, 1);
+  const endMonth = useMemo(() => new Date(2100, 11), []);
+  const defaultMonth = selected ?? new Date();
 
   const display = selected
     ? format(selected, "MMMM d, yyyy")
-    : "Select date of birth";
+    : field.placeholder || "Select date";
 
   useEffect(() => {
     if (!open) return;
     const onPointer = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-        onBlur?.();
-      }
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        onBlur?.();
-      }
+      if (event.key === "Escape") setOpen(false);
     };
     document.addEventListener("mousedown", onPointer);
     document.addEventListener("keydown", onKey);
@@ -75,19 +63,27 @@ export function DateOfBirthField({
       document.removeEventListener("mousedown", onPointer);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, onBlur]);
+  }, [open]);
 
   return (
-    <div className={cn("space-y-2", className)}>
-      <Label htmlFor={id}>{label}</Label>
+    <FieldShell
+      id={field.id}
+      label={field.label}
+      required={field.required}
+      description={field.description}
+      error={error}
+      fullWidth={field.fullWidth}
+      cols={field.meta?.cols}
+    >
       <div ref={rootRef} className="relative">
         <button
           type="button"
-          id={id}
+          id={field.id}
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={listId}
           aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${field.id}-error` : undefined}
           onClick={() => setOpen((prev) => !prev)}
           className={cn(
             "flex h-11 w-full items-center gap-2 rounded-lg border border-input bg-card px-3 text-left text-sm",
@@ -114,7 +110,7 @@ export function DateOfBirthField({
           <div
             id={listId}
             role="dialog"
-            aria-label="Choose date of birth"
+            aria-label={`Choose ${field.label || "date"}`}
             className={cn(
               "absolute top-[calc(100%+0.4rem)] right-0 z-40 w-[min(100%,20.5rem)]",
               "rounded-2xl border border-border bg-card p-3 shadow-lg",
@@ -134,7 +130,6 @@ export function DateOfBirthField({
                 if (!date) return;
                 onChange(toIsoDate(date));
                 setOpen(false);
-                onBlur?.();
               }}
               className="medora-dob-picker mx-auto"
             />
@@ -144,12 +139,6 @@ export function DateOfBirthField({
           </div>
         ) : null}
       </div>
-
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
-    </div>
+    </FieldShell>
   );
 }

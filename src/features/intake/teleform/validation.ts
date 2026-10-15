@@ -1,10 +1,17 @@
 import {
+  isValidPhoneNumber,
+  type CountryCode,
+} from "libphonenumber-js";
+import { DEFAULT_PHONE_COUNTRY_ISO } from "@/features/intake/data/country-dial-codes";
+import {
+  emailVerifyStatusKey,
+  phoneCountryIsoKey,
+} from "@/features/intake/teleform/field-meta";
+import {
   isAnswerField,
   type NormalizedTeleformField,
   type TeleformValues,
 } from "@/features/intake/teleform/types";
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function asString(value: TeleformValues[string] | undefined): string {
   if (typeof value === "string") return value;
@@ -88,8 +95,38 @@ export function validateField(
 
   if (!text) return null;
 
-  if (field.type === "email" && !EMAIL_RE.test(text)) {
-    return messageFor(validation, "email", "Enter a valid email address");
+  if (field.type === "email") {
+    const status = asString(values[emailVerifyStatusKey(field.name)]);
+    if (status === "valid") return null;
+    if (status === "checking" || status === "typing") {
+      return "Please wait for email verification";
+    }
+    if (status === "invalid" || status === "failed") {
+      return "Invalid email";
+    }
+    if (status === "unknown") {
+      return "Could not confirm this email. Try again shortly.";
+    }
+    return "Please wait for email verification";
+  }
+
+  if (field.type === "tel" || field.type === "phone") {
+    const digits = text.replace(/[^\d+]/g, "").replace(/^\+/, "");
+    if (digits.length < 6) {
+      return messageFor(validation, "phone", "Enter a valid phone number");
+    }
+    const country = (
+      asString(values[phoneCountryIsoKey(field.name)]) ||
+      DEFAULT_PHONE_COUNTRY_ISO
+    ).toUpperCase() as CountryCode;
+    try {
+      if (!isValidPhoneNumber(text, country)) {
+        return "Phone number does not belong to this country";
+      }
+    } catch {
+      return "Phone number does not belong to this country";
+    }
+    return null;
   }
 
   const minLength = readNumericRule(validation, "minLength");

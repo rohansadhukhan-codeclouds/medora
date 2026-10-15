@@ -14,6 +14,7 @@ type FieldProps<T extends FieldValues> = {
   error?: string;
   type?: string;
   placeholder?: string;
+  autoComplete?: string;
   className?: string;
   multiline?: boolean;
   fullWidth?: boolean;
@@ -27,6 +28,7 @@ export function Field<T extends FieldValues>({
   error,
   type = "text",
   placeholder,
+  autoComplete,
   className,
   multiline = false,
   fullWidth = false,
@@ -38,6 +40,7 @@ export function Field<T extends FieldValues>({
         <Textarea
           id={id}
           placeholder={placeholder}
+          autoComplete={autoComplete}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
           {...register(name)}
@@ -47,6 +50,7 @@ export function Field<T extends FieldValues>({
           id={id}
           type={type}
           placeholder={placeholder}
+          autoComplete={autoComplete}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
           {...register(name)}

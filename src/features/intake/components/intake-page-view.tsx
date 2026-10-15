@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ClipboardList } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
-import { saveTeleformDraft } from "@/features/intake/draft-storage";
+import { extractCheckoutContact } from "@/features/checkout/extract-contact-from-teleform";
+import { saveCheckoutContactDraft } from "@/features/checkout/intake-checkout-draft";
 import { DynamicFormRenderer } from "@/features/intake/teleform/dynamic-form-renderer";
 import { IntakeLoading } from "@/features/intake/teleform/intake-loading";
 import type { TeleformValues } from "@/features/intake/teleform/types";
@@ -37,12 +38,10 @@ export function IntakePageView() {
   // Avoid Date.now() during render — breaks Next.js prerender purity checks.
   const startedAt = useRef(0);
 
-  const handleTeleformSubmit = (
-    values: TeleformValues,
-    metadata: { formId?: string; version?: number; title?: string },
-  ) => {
-    saveTeleformDraft(values, metadata);
-    router.push("/intake/information");
+  const handleTeleformSubmit = (values: TeleformValues) => {
+    const contact = extractCheckoutContact(values);
+    saveCheckoutContactDraft(contact);
+    router.push("/checkout");
   };
 
   useEffect(() => {

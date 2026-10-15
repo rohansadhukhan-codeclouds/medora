@@ -3,50 +3,51 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   COUNTRY_DIAL_CODES,
+  DEFAULT_PHONE_COUNTRY_ISO,
   findCountryByIso,
   flagEmoji,
   formatDialPrefix,
   type CountryDialCode,
 } from "@/features/intake/data/country-dial-codes";
+import { phoneCountryIsoKey } from "@/features/intake/teleform/field-meta";
+import { FieldShell } from "@/features/intake/teleform/fields/field-shell";
+import type { NormalizedTeleformField } from "@/features/intake/teleform/types";
 import { cn } from "@/lib/utils/cn";
 
 type Props = {
-  id?: string;
-  label?: string;
+  field: NormalizedTeleformField;
+  value: string;
   countryIso: string;
-  phone: string;
-  phoneError?: string;
-  onCountryChange: (iso2: string) => void;
-  onPhoneChange: (phone: string) => void;
-  onPhoneBlur?: React.FocusEventHandler<HTMLInputElement>;
-  phoneRef?: React.Ref<HTMLInputElement>;
-  className?: string;
+  error?: string;
+  onChange: (name: string, value: string | boolean | string[]) => void;
 };
 
-export function PhoneCountryField({
-  id = "patient-phone",
-  label = "Phone",
+export function PhoneCountryTeleformField({
+  field,
+  value,
   countryIso,
-  phone,
-  phoneError,
-  onCountryChange,
-  onPhoneChange,
-  onPhoneBlur,
-  phoneRef,
-  className,
+  error,
+  onChange,
 }: Props) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const countryKey = phoneCountryIsoKey(field.name);
 
   const selected =
     findCountryByIso(countryIso) ??
-    COUNTRY_DIAL_CODES.find((c) => c.iso2 === "IN")!;
+    findCountryByIso(DEFAULT_PHONE_COUNTRY_ISO)!;
+
+  useEffect(() => {
+    if (!countryIso) {
+      onChange(countryKey, DEFAULT_PHONE_COUNTRY_ISO);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once when empty
+  }, [countryIso, countryKey]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -87,19 +88,26 @@ export function PhoneCountryField({
   }, [open]);
 
   const pick = (country: CountryDialCode) => {
-    onCountryChange(country.iso2);
+    onChange(countryKey, country.iso2);
     setOpen(false);
     setQuery("");
   };
 
   return (
-    <div className={cn("space-y-2", className)}>
-      <Label htmlFor={id}>{label}</Label>
+    <FieldShell
+      id={field.id}
+      label={field.label}
+      required={field.required}
+      description={field.description}
+      error={error}
+      fullWidth={field.fullWidth}
+      cols={field.meta?.cols}
+    >
       <div ref={rootRef} className="relative">
         <div
           className={cn(
             "flex h-11 overflow-hidden rounded-lg border border-input bg-card",
-            phoneError && "border-destructive",
+            error && "border-destructive",
           )}
         >
           <button
@@ -131,17 +139,18 @@ export function PhoneCountryField({
           </button>
 
           <Input
-            ref={phoneRef}
-            id={id}
+            id={field.id}
+            name={field.name}
             type="tel"
             inputMode="tel"
             autoComplete="tel-national"
-            placeholder="Mobile number"
-            value={phone}
-            onChange={(event) => onPhoneChange(event.target.value)}
-            onBlur={onPhoneBlur}
-            aria-invalid={Boolean(phoneError)}
+            placeholder={field.placeholder || "Mobile number"}
+            value={value}
+            required={field.required}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? `${field.id}-error` : undefined}
             className="h-full rounded-none border-0 bg-transparent shadow-none focus:border-0 focus-visible:border-0"
+            onChange={(event) => onChange(field.name, event.target.value)}
           />
         </div>
 
@@ -172,7 +181,6 @@ export function PhoneCountryField({
                 />
               </div>
             </div>
-
             <ul className="max-h-64 overflow-y-auto py-1">
               {filtered.length === 0 ? (
                 <li className="px-3 py-4 text-center text-sm text-muted-foreground">
@@ -212,12 +220,6 @@ export function PhoneCountryField({
           </div>
         ) : null}
       </div>
-
-      {phoneError ? (
-        <p role="alert" className="text-sm text-destructive">
-          {phoneError}
-        </p>
-      ) : null}
-    </div>
+    </FieldShell>
   );
 }
