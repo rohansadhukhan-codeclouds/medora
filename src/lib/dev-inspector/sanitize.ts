@@ -138,15 +138,36 @@ export function maskId(value?: string | null): string | null {
 
 export function safeEndpointPath(path: string): string {
   try {
+    let pathname = path;
+    let search = "";
+
     if (path.startsWith("http://") || path.startsWith("https://")) {
       const url = new URL(path);
-      return url.pathname;
+      pathname = url.pathname;
+      search = url.search;
+    } else {
+      const q = path.indexOf("?");
+      if (q >= 0) {
+        pathname = path.slice(0, q);
+        search = path.slice(q);
+      }
     }
+
+    if (!search || search === "?") return pathname;
+
+    const params = new URLSearchParams(
+      search.startsWith("?") ? search.slice(1) : search,
+    );
+    const keys = [...params.keys()];
+    if (keys.length === 0) return pathname;
+
+    // Keep query *names* so contracts like `?teleform_id=` stay visible; mask values.
+    const masked = keys.map((key) => `${key}=…`).join("&");
+    return `${pathname}?${masked}`;
   } catch {
-    // fall through
+    const q = path.indexOf("?");
+    return q >= 0 ? path.slice(0, q) : path;
   }
-  const q = path.indexOf("?");
-  return q >= 0 ? path.slice(0, q) : path;
 }
 
 export function safeErrorMessage(error: unknown): string {

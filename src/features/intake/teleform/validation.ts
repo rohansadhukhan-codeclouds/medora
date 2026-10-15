@@ -15,7 +15,13 @@ import {
 
 function asString(value: TeleformValues[string] | undefined): string {
   if (typeof value === "string") return value;
-  if (typeof value === "number") return String(value);
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  // Resume may leave a one-element array on single-select choice fields.
+  if (Array.isArray(value) && value.length > 0) {
+    return String(value[0] ?? "");
+  }
   return "";
 }
 

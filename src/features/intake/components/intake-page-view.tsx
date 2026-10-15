@@ -7,18 +7,30 @@ import { Reveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
 import { extractCheckoutContact } from "@/features/checkout/extract-contact-from-teleform";
 import { saveCheckoutContactDraft } from "@/features/checkout/intake-checkout-draft";
+import { DynamicFormRenderer } from "@/features/intake/teleform/dynamic-form-renderer";
 import {
-  DynamicFormRenderer,
-  type TeleformStepAdvanceInfo,
-} from "@/features/intake/teleform/dynamic-form-renderer";
+  clearIntakeDraft,
+  getIntakeDraft,
+  mergeIntakePrefill,
+  saveIntakeDraft,
+} from "@/features/intake/teleform/intake-draft-storage";
 import { IntakeLoading } from "@/features/intake/teleform/intake-loading";
-import { syncIntakeClient } from "@/features/intake/teleform/sync-intake-client";
+import {
+  clearIntakeResumeMeta,
+  readActiveIntakeResume,
+  saveIntakeResumeMeta,
+} from "@/features/intake/teleform/intake-resume-storage";
+import {
+  resumeIntakeClient,
+  syncIntakeClient,
+} from "@/features/intake/teleform/sync-intake-client";
 import type { TeleformValues } from "@/features/intake/teleform/types";
 
 type TeleformBootstrapResponse = {
   ok: boolean;
   error?: string;
   formJson?: unknown;
+  teleformId?: string;
 };
 
 const MIN_LOADER_MS = 1800;
@@ -50,38 +62,32 @@ export function IntakePageView() {
   const [error, setError] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [savingFinal, setSavingFinal] = useState(false);
+  const [syncingLabel, setSyncingLabel] = useState("Submitting…");
   const [formJson, setFormJson] = useState<unknown>(null);
+  const [teleformId, setTeleformId] = useState("");
+  const [initialValues, setInitialValues] = useState<TeleformValues | undefined>(
+    undefined,
+  );
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAt = useRef(0);
+  const submitLockRef = useRef(false);
 
-  const handleStepAdvance = async (info: TeleformStepAdvanceInfo) => {
-    if (!formJson) return false;
-    setSyncing(true);
-    setSyncError(null);
-    const result = await syncIntakeClient({
-      phase: "progress",
-      formDefinition: formJson,
-      values: info.values,
-      page: info.progressPage,
-      totalPages: info.pageCount,
-    });
-    setSyncing(false);
-    if (!result.ok) {
-      setSyncError(result.error);
-      return false;
-    }
-    return true;
+  const handleValuesChange = (values: TeleformValues) => {
+    saveIntakeDraft(values, { teleformId: teleformId || undefined });
   };
 
   const handleTeleformSubmit = async (
     values: TeleformValues,
     metadata: { pageCount: number; progressPage: number },
   ) => {
-    if (!formJson) return;
-    setSavingFinal(true);
+    if (!formJson || submitLockRef.current) return;
+    submitLockRef.current = true;
     setSyncing(true);
+    setSyncingLabel("Submitting…");
     setSyncError(null);
+
+    // Persist latest answers before the network round-trip (retry-safe).
+    saveIntakeDraft(values, { teleformId: teleformId || undefined });
 
     const result = await syncIntakeClient({
       phase: "complete",
@@ -94,9 +100,14 @@ export function IntakePageView() {
     if (!result.ok) {
       setSyncError(result.error);
       setSyncing(false);
-      setSavingFinal(false);
+      submitLockRef.current = false;
       return;
     }
+
+    setSyncingLabel("Finishing…");
+    // Clear draft only after successful Intake Update (+ opportunity).
+    clearIntakeDraft();
+    clearIntakeResumeMeta();
 
     try {
       const contact = extractCheckoutContact(values);
@@ -143,26 +154,110 @@ export function IntakePageView() {
         }
 
         setFormJson(payload.formJson);
-        setPercent((prev) => Math.max(prev, 62));
-        setLoaderLabel("Starting intake session");
-        setLoaderDetail("Creating your intake submission…");
+        setPercent((prev) => Math.max(prev, 55));
 
-        const totalPages = readPageCount(payload.formJson);
-        const initResult = await syncIntakeClient({
-          phase: "initiate",
-          formDefinition: payload.formJson,
-          values: {},
-          page: 1,
-          totalPages,
-        });
+        const resolvedTeleformId =
+          (typeof payload.teleformId === "string" && payload.teleformId.trim()) ||
+          "";
+        setTeleformId(resolvedTeleformId);
 
+        const localResume = readActiveIntakeResume(
+          resolvedTeleformId || undefined,
+        );
+        const localDraft = getIntakeDraft(resolvedTeleformId || undefined);
+
+        let serverValues: TeleformValues = {};
+        let hasServerSubmission = false;
+
+        setLoaderLabel("Checking saved progress");
+        setLoaderDetail(
+          localDraft
+            ? "Restoring your draft answers…"
+            : "Looking up your intake session…",
+        );
+        setPercent((prev) => Math.max(prev, 68));
+
+        const view = await resumeIntakeClient();
         if (cancelled) return;
 
-        if (!initResult.ok) {
-          setStatus("error");
-          setError(initResult.error);
-          setPercent(100);
-          return;
+        if (view.ok && view.resumed) {
+          hasServerSubmission = true;
+          serverValues = view.values ?? {};
+          if (view.submissionId) {
+            saveIntakeResumeMeta({
+              submissionId: view.submissionId,
+              teleformId:
+                view.teleformId ||
+                resolvedTeleformId ||
+                localResume?.teleformId ||
+                "",
+              sessionId: view.sessionId ?? localResume?.sessionId,
+              initiatedAt: localResume?.initiatedAt ?? Date.now(),
+              completedAt: null,
+            });
+          }
+        } else if (view.ok && view.reason === "completed") {
+          clearIntakeResumeMeta();
+          clearIntakeDraft();
+        } else if (!view.ok) {
+          console.warn("[intake] resume view failed", view.error);
+        } else if (localResume && view.ok && !view.resumed) {
+          clearIntakeResumeMeta();
+        }
+
+        if (!hasServerSubmission) {
+          setLoaderLabel("Starting intake session");
+          setLoaderDetail("Creating your intake submission…");
+          setPercent((prev) => Math.max(prev, 72));
+
+          const totalPages = readPageCount(payload.formJson);
+          const initResult = await syncIntakeClient({
+            phase: "initiate",
+            formDefinition: payload.formJson,
+            values: {},
+            page: 1,
+            totalPages,
+          });
+
+          if (cancelled) return;
+
+          if (!initResult.ok) {
+            setStatus("error");
+            setError(initResult.error);
+            setPercent(100);
+            return;
+          }
+
+          // Reused existing submission — load its answers if present.
+          if (!initResult.created) {
+            const again = await resumeIntakeClient();
+            if (cancelled) return;
+            if (again.ok && again.resumed) {
+              serverValues = again.values ?? {};
+            }
+          }
+
+          const resumeTeleformId =
+            resolvedTeleformId ||
+            (view.ok ? view.teleformId : null) ||
+            "";
+          if (initResult.submissionId || resumeTeleformId) {
+            saveIntakeResumeMeta({
+              submissionId:
+                initResult.submissionId ||
+                `session:${initResult.sessionId ?? "pending"}`,
+              teleformId: resumeTeleformId,
+              sessionId: initResult.sessionId ?? undefined,
+              initiatedAt: Date.now(),
+              completedAt: null,
+            });
+          }
+        }
+
+        // Local draft overlays server/defaults (steps are no longer synced mid-flow).
+        const merged = mergeIntakePrefill(serverValues, localDraft?.data);
+        if (Object.keys(merged).length > 0) {
+          setInitialValues(merged);
         }
 
         setPercent((prev) => Math.max(prev, 92));
@@ -176,7 +271,11 @@ export function IntakePageView() {
 
         setPercent(100);
         setLoaderLabel("Almost ready");
-        setLoaderDetail("Opening your intake form…");
+        setLoaderDetail(
+          localDraft || Object.keys(serverValues).length > 0
+            ? "Opening your saved intake…"
+            : "Opening your intake form…",
+        );
         await new Promise((resolve) => setTimeout(resolve, 220));
         if (cancelled) return;
         setStatus("ready");
@@ -268,12 +367,11 @@ export function IntakePageView() {
                 ) : null}
                 <DynamicFormRenderer
                   formDefinition={formJson}
+                  initialValues={initialValues}
                   showFormTitle={false}
                   syncing={syncing}
-                  syncingLabel={
-                    savingFinal ? "Saving…" : "Saving your answers…"
-                  }
-                  onStepAdvance={handleStepAdvance}
+                  syncingLabel={syncingLabel}
+                  onChange={handleValuesChange}
                   onSubmit={handleTeleformSubmit}
                 />
               </div>

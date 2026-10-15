@@ -35,6 +35,7 @@ export type {
 export {
   createIntakeSubmission,
   updateIntakeSubmission,
+  viewIntakeSubmission,
   syncIntakeSubmission,
   submitCompletedIntake,
 } from "@/lib/api/astermd/intake-submissions";

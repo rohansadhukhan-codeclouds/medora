@@ -33,8 +33,8 @@ export const ASTERMD_ENDPOINTS = {
   intakeSubmissionsCreate: "/v1/sales/intake-submissions/create",
   intakeSubmissionsUpdate: (sessionId: string) =>
     `/v1/sales/intake-submissions/update/${encodeURIComponent(sessionId)}`,
-  intakeSubmissionsView: (sessionId: string) =>
-    `/v1/sales/intake-submissions/view/${encodeURIComponent(sessionId)}`,
+  intakeSubmissionsView: (sessionId: string, teleformId: string) =>
+    `/v1/sales/intake-submissions/view/${encodeURIComponent(sessionId)}?teleform_id=${encodeURIComponent(teleformId)}`,
   /** @deprecated Prefer intakeSubmissionsCreate / Update / View */
   intakes: "/v1/sales/intake-submissions",
   intakeById: (id: string) =>

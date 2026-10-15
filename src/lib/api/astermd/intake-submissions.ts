@@ -119,6 +119,41 @@ export async function createIntakeSubmission(input: {
 }
 
 /**
+ * GET /v1/sales/intake-submissions/view/{session}?teleform_id=…
+ * Returns null data when no matching record exists (not 404).
+ * Do not log `data` — PHI.
+ */
+export async function viewIntakeSubmission(input: {
+  sessionId: string;
+  teleformId: string;
+}): Promise<AsterMdIntakeSubmissionRecord | null> {
+  const config = getAsterMdConfig();
+  const sessionId = assertSessionId(input.sessionId);
+  const teleformId = assertTeleformId(input.teleformId);
+
+  if (config.useMock) {
+    return mockStore().get(mockKey(sessionId, teleformId)) ?? null;
+  }
+
+  // Required shape: GET /v1/sales/intake-submissions/view/{session}?teleform_id={id}
+  const path = ASTERMD_ENDPOINTS.intakeSubmissionsView(sessionId, teleformId);
+  console.info(
+    `[AsterMD] intake view GET /v1/sales/intake-submissions/view/{session}?teleform_id=…`,
+  );
+
+  const payload = await asterMdFetch<AsterMdIntakeSubmissionApiResponse>({
+    method: "GET",
+    path,
+  });
+
+  if (payload.data === null || payload.data === undefined) {
+    return null;
+  }
+
+  return payload.data;
+}
+
+/**
  * PUT /v1/sales/intake-submissions/update/{session}
  * Use with `intake_inprogress` / `intake_completed` after create.
  * Full accumulated `data` every call (server replaces, does not merge).
@@ -213,15 +248,34 @@ export async function syncIntakeSubmission(input: {
         error.code,
         error.status,
       );
-      // Already started — push current snapshot as in-progress.
-      const record = await updateIntakeSubmission({
+      // Reuse existing answers — never overwrite with an empty bootstrap payload.
+      const existing = await viewIntakeSubmission({
         sessionId: input.sessionId,
-        event: "intake_inprogress",
         teleformId: input.teleformId,
-        data: input.data,
-        progress: input.progress,
       });
-      return { phase: "initiate", created: false, record };
+      if (existing) {
+        return { phase: "initiate", created: false, record: existing };
+      }
+      if (input.data.length > 0) {
+        const record = await updateIntakeSubmission({
+          sessionId: input.sessionId,
+          event: "intake_inprogress",
+          teleformId: input.teleformId,
+          data: input.data,
+          progress: input.progress,
+        });
+        return { phase: "initiate", created: false, record };
+      }
+      return {
+        phase: "initiate",
+        created: false,
+        record: {
+          session: input.sessionId,
+          teleform_id: input.teleformId,
+          event: "intake_initiated",
+          data: [],
+        },
+      };
     }
   }
 

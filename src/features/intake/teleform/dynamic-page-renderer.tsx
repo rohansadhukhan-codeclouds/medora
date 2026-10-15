@@ -14,6 +14,9 @@ type Props = {
   pageIndex: number;
   pageCount: number;
   accentColor?: string;
+  navDisabled?: boolean;
+  submitLoading?: boolean;
+  submitLoadingLabel?: string;
   onChange: (name: string, value: TeleformValues[string]) => void;
   onButtonAction?: (action: string | undefined) => void;
 };
@@ -25,6 +28,9 @@ export function DynamicPageRenderer({
   pageIndex,
   pageCount,
   accentColor,
+  navDisabled,
+  submitLoading,
+  submitLoadingLabel,
   onChange,
   onButtonAction,
 }: Props) {
@@ -51,6 +57,9 @@ export function DynamicPageRenderer({
           pageIndex={pageIndex}
           pageCount={pageCount}
           accentColor={accentColor}
+          navDisabled={navDisabled}
+          submitLoading={submitLoading}
+          submitLoadingLabel={submitLoadingLabel}
           onChange={onChange}
           onButtonAction={onButtonAction}
         />

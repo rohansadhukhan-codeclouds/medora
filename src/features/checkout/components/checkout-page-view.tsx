@@ -18,6 +18,8 @@ import {
   readCheckoutContactDraft,
   type CheckoutContactDraft,
 } from "@/features/checkout/intake-checkout-draft";
+import { clearIntakeDraft } from "@/features/intake/teleform/intake-draft-storage";
+import { markIntakeResumeCompleted } from "@/features/intake/teleform/intake-resume-storage";
 import { useCart } from "@/hooks/use-cart";
 import { cn } from "@/lib/utils/cn";
 
@@ -27,8 +29,12 @@ export function CheckoutPageView() {
   const [address, setAddress] = useState<CheckoutAddress>(EMPTY_CHECKOUT_ADDRESS);
   const [ready, setReady] = useState(false);
   const [placedHint, setPlacedHint] = useState(false);
+  const [placing, setPlacing] = useState(false);
 
   useEffect(() => {
+    // Completing checkout path → next /intake visit must start a new submission.
+    markIntakeResumeCompleted();
+    clearIntakeDraft();
     setContact(readCheckoutContactDraft());
     setReady(true);
     void refreshFromAsterMd();
@@ -82,7 +88,13 @@ export function CheckoutPageView() {
                 className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  setPlacedHint(true);
+                  if (placing || isEmpty) return;
+                  setPlacing(true);
+                  // Static checkout — brief loading feedback before confirm copy.
+                  window.setTimeout(() => {
+                    setPlacedHint(true);
+                    setPlacing(false);
+                  }, 450);
                 }}
               >
                 <section className="space-y-4">
@@ -187,8 +199,25 @@ export function CheckoutPageView() {
                 </section>
 
                 <div className="border-t border-border pt-6">
-                  <Button type="submit" className="w-full sm:w-auto" disabled={isEmpty}>
-                    Place order
+                  <Button
+                    type="submit"
+                    className="w-full sm:w-auto"
+                    disabled={isEmpty || placing}
+                    aria-busy={placing || undefined}
+                  >
+                    {placing ? (
+                      <>
+                        <Loader2
+                          className="h-4 w-4 animate-spin"
+                          aria-hidden="true"
+                        />
+                        Processing…
+                      </>
+                    ) : placedHint ? (
+                      "Order noted"
+                    ) : (
+                      "Place order"
+                    )}
                   </Button>
                   {placedHint ? (
                     <p className="mt-3 text-sm text-muted-foreground" role="status">

@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   isBackButtonAction,
@@ -13,6 +14,8 @@ type Props = {
   field: NormalizedTeleformField;
   accentColor?: string;
   disabled?: boolean;
+  loading?: boolean;
+  loadingLabel?: string;
   /** When set, overrides schema/label resolution (e.g. force submit on last page). */
   actionOverride?: string;
   onAction: (action: string | undefined) => void;
@@ -22,12 +25,16 @@ export function ButtonField({
   field,
   accentColor = "var(--primary)",
   disabled,
+  loading = false,
+  loadingLabel = "Submitting…",
   actionOverride,
   onAction,
 }: Props) {
   const action = actionOverride || resolveButtonAction(field);
   const isBack = isBackButtonAction(action);
   const isOutline = isBack || action === "none" || !action;
+  const busy = Boolean(loading);
+  const blocked = Boolean(disabled) || busy;
 
   return (
     <div
@@ -40,8 +47,12 @@ export function ButtonField({
       <Button
         type="button"
         variant={isOutline ? "outline" : "default"}
-        disabled={disabled}
-        onClick={() => onAction(action)}
+        disabled={blocked}
+        aria-busy={busy || undefined}
+        onClick={() => {
+          if (blocked) return;
+          onAction(action);
+        }}
         style={
           isOutline
             ? { borderColor: accentColor, color: accentColor }
@@ -52,7 +63,14 @@ export function ButtonField({
               }
         }
       >
-        {field.label?.trim() || (isBack ? "← Back" : "Next step →")}
+        {busy ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            {loadingLabel}
+          </>
+        ) : (
+          field.label?.trim() || (isBack ? "← Back" : "Next step →")
+        )}
       </Button>
     </div>
   );

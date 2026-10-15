@@ -41,6 +41,11 @@ export type FieldRenderProps = {
   pageIndex: number;
   pageCount: number;
   accentColor?: string;
+  /** Disable all nav buttons (e.g. while a request is in flight). */
+  navDisabled?: boolean;
+  /** Show spinner on the forward/submit CTA. */
+  submitLoading?: boolean;
+  submitLoadingLabel?: string;
   onChange: (name: string, value: TeleformValues[string]) => void;
   onButtonAction?: (action: string | undefined) => void;
 };
@@ -48,7 +53,15 @@ export type FieldRenderProps = {
 export type FieldComponent = ComponentType<FieldRenderProps>;
 
 function asString(value: TeleformValues[string] | undefined): string {
-  return typeof value === "string" ? value : "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  // Resume/view often returns checkbox multi as string[] even when UI is single-select.
+  if (Array.isArray(value) && value.length > 0) {
+    return String(value[0] ?? "");
+  }
+  return "";
 }
 
 function asBool(value: TeleformValues[string] | undefined): boolean {
@@ -56,7 +69,12 @@ function asBool(value: TeleformValues[string] | undefined): boolean {
 }
 
 function asStringArray(value: TeleformValues[string] | undefined): string[] {
-  return Array.isArray(value) ? value : [];
+  if (Array.isArray(value)) return value.map((item) => String(item));
+  if (typeof value === "string" && value.trim()) return [value];
+  if (typeof value === "number" || typeof value === "boolean") {
+    return [String(value)];
+  }
+  return [];
 }
 
 function asBmi(
@@ -275,6 +293,9 @@ function ButtonAdapter({
   pageIndex,
   pageCount,
   accentColor,
+  navDisabled,
+  submitLoading,
+  submitLoadingLabel,
   onButtonAction,
 }: FieldRenderProps) {
   let action = resolveButtonAction(field);
@@ -283,13 +304,16 @@ function ButtonAdapter({
   if (!isBack && pageCount > 0 && pageIndex >= pageCount - 1) {
     action = "submit";
   }
+  const isFinalForward = !isBack && pageCount > 0 && pageIndex >= pageCount - 1;
 
   return (
     <ButtonField
       field={field}
       actionOverride={action}
       accentColor={accentColor}
-      disabled={isBack && pageIndex === 0}
+      disabled={(isBack && pageIndex === 0) || Boolean(navDisabled)}
+      loading={isFinalForward && Boolean(submitLoading)}
+      loadingLabel={submitLoadingLabel}
       onAction={(nextAction) => onButtonAction?.(nextAction || action)}
     />
   );

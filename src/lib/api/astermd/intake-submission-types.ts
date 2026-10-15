@@ -49,6 +49,8 @@ export type AsterMdIntakeSubmissionRecord = {
   session?: string;
   teleform_id?: string;
   status?: string;
+  /** Latest journey event for this session/teleform (view). */
+  event?: AsterMdIntakeEvent | string;
   progress?: AsterMdIntakeProgress;
   /** PHI — do not log. */
   data?: AsterMdIntakeField[];
@@ -59,5 +61,6 @@ export type AsterMdIntakeSubmissionRecord = {
 export type AsterMdIntakeSubmissionApiResponse = {
   success?: boolean;
   message?: string;
-  data?: AsterMdIntakeSubmissionRecord;
+  /** Null when no matching record exists (view does not 404). */
+  data?: AsterMdIntakeSubmissionRecord | null;
 };

@@ -14,6 +14,25 @@ type Props = {
   onChange: (value: string | string[]) => void;
 };
 
+function resolveOptionValue(
+  raw: string,
+  options: { value: string; label: string }[],
+): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const exactValue = options.find((option) => option.value === trimmed);
+  if (exactValue) return exactValue.value;
+  const exactLabel = options.find((option) => option.label === trimmed);
+  if (exactLabel) return exactLabel.value;
+  const lower = trimmed.toLowerCase();
+  const fuzzy = options.find(
+    (option) =>
+      option.value.toLowerCase() === lower ||
+      option.label.toLowerCase() === lower,
+  );
+  return fuzzy?.value ?? trimmed;
+}
+
 export function ChoiceField({ field, multi, value, error, onChange }: Props) {
   const options = field.options ?? [];
   const horizontal =
@@ -35,7 +54,13 @@ export function ChoiceField({ field, multi, value, error, onChange }: Props) {
   }
 
   if (!multi) {
-    const current = typeof value === "string" ? value : "";
+    const raw =
+      typeof value === "string"
+        ? value
+        : Array.isArray(value) && value.length > 0
+          ? String(value[0] ?? "")
+          : "";
+    const current = resolveOptionValue(raw, options);
     return (
       <FieldShell
         id={field.id}
@@ -87,7 +112,14 @@ export function ChoiceField({ field, multi, value, error, onChange }: Props) {
     );
   }
 
-  const selected = new Set(Array.isArray(value) ? value : []);
+  const rawSelected = Array.isArray(value)
+    ? value.map(String)
+    : typeof value === "string" && value
+      ? [value]
+      : [];
+  const selected = new Set(
+    rawSelected.map((item) => resolveOptionValue(item, options)).filter(Boolean),
+  );
 
   return (
     <FieldShell

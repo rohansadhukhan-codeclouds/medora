@@ -2,7 +2,26 @@ import type { TeleformValues } from "@/features/intake/teleform/types";
 import type { IntakeSyncPhase } from "@/lib/api/astermd/intake-submission-types";
 
 export type IntakeSyncClientResult =
-  | { ok: true; phase: IntakeSyncPhase }
+  | {
+      ok: true;
+      phase: IntakeSyncPhase;
+      submissionId?: string | null;
+      sessionId?: string | null;
+      created?: boolean;
+    }
+  | { ok: false; error: string };
+
+export type IntakeResumeClientResult =
+  | {
+      ok: true;
+      resumed: boolean;
+      reason?: string;
+      submissionId: string | null;
+      sessionId?: string | null;
+      teleformId?: string | null;
+      event: string | null;
+      values: TeleformValues;
+    }
   | { ok: false; error: string };
 
 type SyncArgs = {
@@ -37,6 +56,9 @@ export async function syncIntakeClient(
       ok?: boolean;
       error?: string;
       phase?: IntakeSyncPhase;
+      submissionId?: string | null;
+      sessionId?: string | null;
+      created?: boolean;
     };
 
     if (!response.ok || !payload.ok) {
@@ -47,11 +69,62 @@ export async function syncIntakeClient(
       };
     }
 
-    return { ok: true, phase: payload.phase ?? args.phase };
+    return {
+      ok: true,
+      phase: payload.phase ?? args.phase,
+      submissionId: payload.submissionId ?? null,
+      sessionId: payload.sessionId ?? null,
+      created: payload.created,
+    };
   } catch {
     return {
       ok: false,
       error: "Unable to save your intake. Please try again.",
+    };
+  }
+}
+
+/** Browser → BFF view for resume prefill. */
+export async function resumeIntakeClient(): Promise<IntakeResumeClientResult> {
+  try {
+    const response = await fetch("/api/intake", {
+      method: "GET",
+      cache: "no-store",
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      ok?: boolean;
+      error?: string;
+      resumed?: boolean;
+      reason?: string;
+      submissionId?: string | null;
+      sessionId?: string | null;
+      teleformId?: string | null;
+      event?: string | null;
+      values?: TeleformValues;
+    };
+
+    if (!response.ok || !payload.ok) {
+      return {
+        ok: false,
+        error:
+          payload.error || "Unable to resume your intake. Please try again.",
+      };
+    }
+
+    return {
+      ok: true,
+      resumed: Boolean(payload.resumed),
+      reason: payload.reason,
+      submissionId: payload.submissionId ?? null,
+      sessionId: payload.sessionId ?? null,
+      teleformId: payload.teleformId ?? null,
+      event: payload.event ?? null,
+      values: payload.values ?? {},
+    };
+  } catch {
+    return {
+      ok: false,
+      error: "Unable to resume your intake. Please try again.",
     };
   }
 }

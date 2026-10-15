@@ -5,7 +5,10 @@ import {
   normalizeAsterMdError,
 } from "@/lib/api/astermd/errors";
 import type { IntakeSyncPhase } from "@/lib/api/astermd/intake-submission-types";
-import { syncIntakeSubmission } from "@/lib/api/astermd/intake-submissions";
+import {
+  syncIntakeSubmission,
+  viewIntakeSubmission,
+} from "@/lib/api/astermd/intake-submissions";
 import {
   buildFinalOpportunityCreateBody,
   createOpportunity,
@@ -14,6 +17,7 @@ import {
 } from "@/lib/api/astermd/opportunities";
 import { createSalesSession } from "@/lib/api/astermd/sessions";
 import { extractOpportunityPatch } from "@/features/intake/teleform/extract-opportunity-patch";
+import { mapIntakeFieldsToValues } from "@/features/intake/teleform/map-intake-fields-to-values";
 import { mapTeleformValuesToIntakeFields } from "@/features/intake/teleform/map-values-to-intake-fields";
 import { normalizeTeleformJson } from "@/features/intake/teleform/normalize-teleform";
 import type { TeleformValues } from "@/features/intake/teleform/types";
@@ -46,11 +50,112 @@ async function ensureVisitorSessionId(request: NextRequest): Promise<string> {
 }
 
 /**
- * POST — progressive medical intake sync (+ opportunity only on complete).
+ * GET — resume helper.
+ * Loads the latest intake-submissions view for the visitor session + teleform.
+ * Returns values mapped for teleform prefill when a non-completed record exists.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const config = getAsterMdConfig();
+    if (
+      !config.useMock &&
+      (!config.baseUrl || !config.clientId || !config.clientSecret)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "AsterMD credentials are not configured on the server.",
+        },
+        { status: 503, headers: NO_STORE },
+      );
+    }
+
+    const teleformId = config.intakeFormId?.trim();
+    if (!teleformId) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Intake form is not configured on the server.",
+        },
+        { status: 503, headers: NO_STORE },
+      );
+    }
+
+    const sessionId = await getVisitorSessionId();
+    if (!sessionId) {
+      return NextResponse.json(
+        {
+          ok: true,
+          resumed: false,
+          reason: "no_session",
+          submissionId: null,
+          event: null,
+          values: {},
+        },
+        { headers: NO_STORE },
+      );
+    }
+
+    const record = await viewIntakeSubmission({ sessionId, teleformId });
+    if (!record) {
+      return NextResponse.json(
+        {
+          ok: true,
+          resumed: false,
+          reason: "not_found",
+          sessionId,
+          submissionId: null,
+          event: null,
+          values: {},
+        },
+        { headers: NO_STORE },
+      );
+    }
+
+    const event = String(record.event ?? record.status ?? "").toLowerCase();
+    const completed = event.includes("completed");
+    const submissionId = record._id ?? record.id ?? null;
+    const values = mapIntakeFieldsToValues(record.data);
+
+    return NextResponse.json(
+      {
+        ok: true,
+        resumed: !completed,
+        reason: completed ? "completed" : "active",
+        sessionId,
+        teleformId,
+        submissionId,
+        event: record.event ?? null,
+        values,
+      },
+      { headers: NO_STORE },
+    );
+  } catch (error) {
+    const normalized = normalizeAsterMdError(error);
+    console.error(
+      "[AsterMD] intake view error",
+      normalized.code,
+      normalized.status,
+    );
+    return NextResponse.json(
+      { ok: false, error: getUserFacingMessage(normalized) },
+      { status: normalized.status, headers: NO_STORE },
+    );
+  }
+}
+
+/**
+ * POST — medical intake sync (+ opportunity only on complete).
+ *
+ * Storefront flow (CURRENT):
+ * - initiate once on intake open
+ * - complete once on final submit (update + opportunity)
+ * Mid-step `progress` remains supported by the BFF but the UI no longer
+ * calls it — answers draft locally until final submit.
  *
  * phase:
  * - initiate  → intake create (intake_initiated) only
- * - progress  → intake update (intake_inprogress) only
+ * - progress  → intake update (intake_inprogress) only (optional / unused by UI)
  * - complete  → intake update (intake_completed) then opportunities/create
  *               with full teleform answers (or update if cookie already set)
  *

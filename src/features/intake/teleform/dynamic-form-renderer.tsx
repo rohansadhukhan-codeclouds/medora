@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { shouldRenderPage } from "@/features/intake/teleform/conditions";
@@ -40,7 +40,8 @@ export type DynamicFormRendererProps = {
   onPageChange?: (pageIndex: number, pageCount: number) => void;
   onValidationError?: (errors: Record<string, string>) => void;
   /**
-   * After a mid-form page validates, before advancing.
+   * Optional hook after a mid-form page validates, before advancing.
+   * Prefer client-only use — do not call Intake Update here.
    * Return false to block navigation; awaitable.
    */
   onStepAdvance?: (
@@ -60,11 +61,91 @@ export type DynamicFormRendererProps = {
   onComplete?: (values: TeleformValues) => void;
   /** When false, skip rendering formName/title inside the card (page owns the heading). */
   showFormTitle?: boolean;
-  /** Disable nav while parent syncs intake. */
+  /** True while final Intake Update / opportunity APIs run. */
   syncing?: boolean;
-  /** Status copy while syncing (e.g. final save). */
+  /** Status / CTA copy while syncing (e.g. Submitting…). */
   syncingLabel?: string;
 };
+
+function resolveOptionValue(
+  raw: string,
+  options: NormalizedTeleformField["options"],
+): string {
+  const trimmed = raw.trim();
+  if (!trimmed || !options?.length) return trimmed;
+  const exactValue = options.find((option) => option.value === trimmed);
+  if (exactValue) return exactValue.value;
+  const exactLabel = options.find((option) => option.label === trimmed);
+  if (exactLabel) return exactLabel.value;
+  const lower = trimmed.toLowerCase();
+  const fuzzy = options.find(
+    (option) =>
+      option.value.toLowerCase() === lower ||
+      option.label.toLowerCase() === lower,
+  );
+  return fuzzy?.value ?? trimmed;
+}
+
+/**
+ * Align resume/view payloads with field shape (string vs string[]) so
+ * visual prefill and required validation agree without re-selecting.
+ */
+function coerceInitialValues(
+  form: NormalizedTeleform,
+  initial: TeleformValues | undefined,
+): TeleformValues {
+  if (!initial || Object.keys(initial).length === 0) return {};
+
+  const byName = new Map<string, NormalizedTeleformField>();
+  for (const section of form.sections) {
+    for (const field of section.fields) {
+      if (isAnswerField(field)) byName.set(field.name, field);
+    }
+  }
+
+  const out: TeleformValues = { ...initial };
+  for (const [name, value] of Object.entries(initial)) {
+    const field = byName.get(name);
+    if (!field) continue;
+
+    if (field.type === "checkbox_group") {
+      const arr = Array.isArray(value)
+        ? value.map(String)
+        : typeof value === "string" && value
+          ? [value]
+          : [];
+      out[name] = arr
+        .map((item) => resolveOptionValue(item, field.options))
+        .filter(Boolean);
+      continue;
+    }
+
+    if (field.type === "choice_multi") {
+      const multi = field.meta?.multiSelect === true;
+      if (multi) {
+        const arr = Array.isArray(value)
+          ? value.map(String)
+          : typeof value === "string" && value
+            ? [value]
+            : [];
+        out[name] = arr
+          .map((item) => resolveOptionValue(item, field.options))
+          .filter(Boolean);
+      } else {
+        const raw = Array.isArray(value)
+          ? String(value[0] ?? "")
+          : typeof value === "string" ||
+              typeof value === "number" ||
+              typeof value === "boolean"
+            ? String(value)
+            : "";
+        out[name] = resolveOptionValue(raw, field.options);
+      }
+    }
+  }
+
+  return out;
+}
 
 function emptyValues(form: NormalizedTeleform): TeleformValues {
   const values: TeleformValues = {};
@@ -73,11 +154,11 @@ function emptyValues(form: NormalizedTeleform): TeleformValues {
       if (!isAnswerField(field)) continue;
       if (field.type === "checkbox" || field.type === "terms") {
         values[field.name] = false;
-      } else if (
-        field.type === "checkbox_group" ||
-        field.type === "choice_multi"
-      ) {
+      } else if (field.type === "checkbox_group") {
         values[field.name] = [];
+      } else if (field.type === "choice_multi") {
+        // AsterMD choice-multi may render as radios when multiSelect is false.
+        values[field.name] = field.meta?.multiSelect === true ? [] : "";
       } else if (field.type === "bmi") {
         const unit =
           field.meta?.bmiSubfields?.find((s) => s.name === "unit")
@@ -135,14 +216,28 @@ export function DynamicFormRenderer({
     [formDefinition, schema],
   );
 
+  const coercedInitial = useMemo(
+    () => coerceInitialValues(form, initialValues),
+    [form, initialValues],
+  );
+
   const [pageIndex, setPageIndex] = useState(0);
   const [values, setValues] = useState<TeleformValues>(() => ({
     ...emptyValues(form),
-    ...initialValues,
+    ...coercedInitial,
   }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
   const [stepBusy, setStepBusy] = useState(false);
+
+  // Apply resume prefills after mount / when view payload arrives.
+  useEffect(() => {
+    if (!coercedInitial || Object.keys(coercedInitial).length === 0) return;
+    setValues((prev) => ({
+      ...prev,
+      ...coercedInitial,
+    }));
+  }, [coercedInitial]);
 
   const visiblePages = useMemo(
     () => form.sections.filter((page) => shouldRenderPage(page, values)),
@@ -281,16 +376,17 @@ export function DynamicFormRenderer({
     (nextButton ? buttonLabel(nextButton, "Submit") : "Submit");
   const accentColor = form.settings?.accentColor || "var(--primary)";
   const navDisabled = stepBusy || syncing;
+  const isLastPage = safePageIndex >= pageCount - 1;
 
   return (
     <div
       className={cn(
         "space-y-6 rounded-2xl",
-        navDisabled && "pointer-events-none opacity-70",
+        syncing && "pointer-events-none opacity-70",
         className,
       )}
       style={getFormThemeStyle(form.settings)}
-      aria-busy={navDisabled || undefined}
+      aria-busy={syncing || undefined}
     >
       {showFormTitle && form.title ? (
         <div>
@@ -303,7 +399,7 @@ export function DynamicFormRenderer({
         </div>
       ) : null}
 
-      {syncing || stepBusy ? (
+      {syncing ? (
         <div
           className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-foreground"
           role="status"
@@ -313,7 +409,7 @@ export function DynamicFormRenderer({
             className="h-4 w-4 shrink-0 animate-spin text-primary"
             aria-hidden="true"
           />
-          <span>{syncing ? syncingLabel : "Saving step…"}</span>
+          <span>{syncingLabel}</span>
         </div>
       ) : null}
 
@@ -324,6 +420,9 @@ export function DynamicFormRenderer({
         pageIndex={safePageIndex}
         pageCount={pageCount}
         accentColor={accentColor}
+        navDisabled={navDisabled}
+        submitLoading={syncing && isLastPage}
+        submitLoadingLabel={syncingLabel}
         onChange={onFieldChange}
         onButtonAction={handleButtonAction}
       />
@@ -368,10 +467,9 @@ export function DynamicFormRenderer({
           <Button
             type="button"
             disabled={navDisabled}
+            aria-busy={syncing && isLastPage ? true : undefined}
             onClick={() =>
-              handleButtonAction(
-                safePageIndex >= pageCount - 1 ? "submit" : "next_page",
-              )
+              handleButtonAction(isLastPage ? "submit" : "next_page")
             }
             style={{
               backgroundColor: accentColor,
@@ -379,7 +477,16 @@ export function DynamicFormRenderer({
               color: "#fff",
             }}
           >
-            {safePageIndex >= pageCount - 1 ? submitLabel : "Next step →"}
+            {syncing && isLastPage ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                {syncingLabel}
+              </>
+            ) : isLastPage ? (
+              submitLabel
+            ) : (
+              "Next step →"
+            )}
           </Button>
         </div>
       ) : null}
