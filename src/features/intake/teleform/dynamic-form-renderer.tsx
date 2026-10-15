@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { shouldRenderPage } from "@/features/intake/teleform/conditions";
 import { DynamicPageRenderer } from "@/features/intake/teleform/dynamic-page-renderer";
@@ -17,6 +18,17 @@ import {
 } from "@/features/intake/teleform/types";
 import { cn } from "@/lib/utils/cn";
 
+export type TeleformStepAdvanceInfo = {
+  values: TeleformValues;
+  /** 0-based page just completed */
+  fromPageIndex: number;
+  /** 0-based page navigating to */
+  toPageIndex: number;
+  pageCount: number;
+  /** 1-based progress page after this step (AsterMD progress.meta) */
+  progressPage: number;
+};
+
 export type DynamicFormRendererProps = {
   /** Raw AsterMD teleform JSON or already-normalized schema. */
   formDefinition?: unknown | NormalizedTeleform;
@@ -27,14 +39,31 @@ export type DynamicFormRendererProps = {
   onChange?: (values: TeleformValues) => void;
   onPageChange?: (pageIndex: number, pageCount: number) => void;
   onValidationError?: (errors: Record<string, string>) => void;
+  /**
+   * After a mid-form page validates, before advancing.
+   * Return false to block navigation; awaitable.
+   */
+  onStepAdvance?: (
+    info: TeleformStepAdvanceInfo,
+  ) => boolean | void | Promise<boolean | void>;
   onSubmit?: (
     values: TeleformValues,
-    metadata: { formId?: string; version?: number; title?: string },
-  ) => void;
+    metadata: {
+      formId?: string;
+      version?: number;
+      title?: string;
+      pageCount: number;
+      progressPage: number;
+    },
+  ) => void | Promise<void>;
   /** @deprecated Prefer onSubmit */
   onComplete?: (values: TeleformValues) => void;
   /** When false, skip rendering formName/title inside the card (page owns the heading). */
   showFormTitle?: boolean;
+  /** Disable nav while parent syncs intake. */
+  syncing?: boolean;
+  /** Status copy while syncing (e.g. final save). */
+  syncingLabel?: string;
 };
 
 function emptyValues(form: NormalizedTeleform): TeleformValues {
@@ -46,7 +75,7 @@ function emptyValues(form: NormalizedTeleform): TeleformValues {
         values[field.name] = false;
       } else if (
         field.type === "checkbox_group" ||
-        (field.type === "choice_multi" && field.meta?.multiSelect)
+        field.type === "choice_multi"
       ) {
         values[field.name] = [];
       } else if (field.type === "bmi") {
@@ -94,9 +123,12 @@ export function DynamicFormRenderer({
   onChange,
   onPageChange,
   onValidationError,
+  onStepAdvance,
   onSubmit,
   onComplete,
   showFormTitle = true,
+  syncing = false,
+  syncingLabel = "Saving…",
 }: DynamicFormRendererProps) {
   const form = useMemo(
     () => normalizeTeleformJson(formDefinition ?? schema),
@@ -110,6 +142,7 @@ export function DynamicFormRenderer({
   }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
+  const [stepBusy, setStepBusy] = useState(false);
 
   const visiblePages = useMemo(
     () => form.sections.filter((page) => shouldRenderPage(page, values)),
@@ -129,13 +162,12 @@ export function DynamicFormRenderer({
     navButtons.find((b) => b.meta?.buttonAction === "next_page") ||
     navButtons.find((b) => /next|continue|submit/i.test(b.label));
 
-  const updateValues = (next: TeleformValues) => {
-    setValues(next);
-    onChange?.(next);
-  };
-
   const onFieldChange = (name: string, value: TeleformValues[string]) => {
-    updateValues({ ...values, [name]: value });
+    setValues((prev) => {
+      const next = { ...prev, [name]: value };
+      onChange?.(next);
+      return next;
+    });
     setErrors((prev) => {
       if (!prev[name]) return prev;
       const next = { ...prev };
@@ -150,8 +182,58 @@ export function DynamicFormRenderer({
     onPageChange?.(clamped, pageCount);
   };
 
+  const goNext = async (forceSubmit = false) => {
+    if (!page || stepBusy || syncing) return;
+    const answerFields = page.fields.filter(isAnswerField);
+    const nextErrors = validateFields(answerFields, values);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      onValidationError?.(nextErrors);
+      focusFirstError(nextErrors, answerFields);
+      return;
+    }
+
+    const isLast = forceSubmit || safePageIndex >= pageCount - 1;
+    if (isLast) {
+      const metadata = {
+        formId: form.formId,
+        version: form.version,
+        title: form.title,
+        pageCount,
+        progressPage: pageCount,
+      };
+      setStepBusy(true);
+      try {
+        await onSubmit?.(values, metadata);
+        onComplete?.(values);
+        if (!onSubmit) setDone(true);
+      } finally {
+        setStepBusy(false);
+      }
+      return;
+    }
+
+    const toPageIndex = safePageIndex + 1;
+    setStepBusy(true);
+    try {
+      const allowed = await onStepAdvance?.({
+        values,
+        fromPageIndex: safePageIndex,
+        toPageIndex,
+        pageCount,
+        progressPage: toPageIndex + 1,
+      });
+      if (allowed === false) return;
+      goToPage(toPageIndex);
+    } finally {
+      setStepBusy(false);
+    }
+  };
+
   const handleButtonAction = (action: string | undefined) => {
+    if (stepBusy || syncing) return;
     const normalized = (action || "").toLowerCase().replace(/[\s-]+/g, "_");
+    const onLastPage = pageCount > 0 && safePageIndex >= pageCount - 1;
     if (
       normalized === "previous_page" ||
       normalized === "previouspage" ||
@@ -168,10 +250,11 @@ export function DynamicFormRenderer({
       normalized === "next" ||
       normalized === "continue" ||
       normalized === "submit" ||
-      !normalized
+      !normalized ||
+      // Last page often ships buttonAction "none" on the forward button.
+      (normalized === "none" && onLastPage)
     ) {
-      // Last page Next often has schema action "none" but still means finish.
-      goNext(normalized === "submit" || safePageIndex >= pageCount - 1);
+      void goNext(normalized === "submit" || onLastPage);
       return;
     }
     if (normalized === "none") return;
@@ -179,33 +262,6 @@ export function DynamicFormRenderer({
     if (process.env.NODE_ENV === "development") {
       console.warn(`[teleform] Unknown buttonAction: ${action}`);
     }
-  };
-
-  const goNext = (forceSubmit = false) => {
-    if (!page) return;
-    const answerFields = page.fields.filter(isAnswerField);
-    const nextErrors = validateFields(answerFields, values);
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) {
-      onValidationError?.(nextErrors);
-      focusFirstError(nextErrors, answerFields);
-      return;
-    }
-
-    const isLast = forceSubmit || safePageIndex >= pageCount - 1;
-    if (isLast) {
-      const metadata = {
-        formId: form.formId,
-        version: form.version,
-        title: form.title,
-      };
-      onSubmit?.(values, metadata);
-      onComplete?.(values);
-      // Parent owns navigation when onSubmit is provided (e.g. → information page).
-      if (!onSubmit) setDone(true);
-      return;
-    }
-    goToPage(safePageIndex + 1);
   };
 
   const goBack = () => {
@@ -224,11 +280,17 @@ export function DynamicFormRenderer({
     form.settings?.submitButtonText ||
     (nextButton ? buttonLabel(nextButton, "Submit") : "Submit");
   const accentColor = form.settings?.accentColor || "var(--primary)";
+  const navDisabled = stepBusy || syncing;
 
   return (
     <div
-      className={cn("space-y-6 rounded-2xl", className)}
+      className={cn(
+        "space-y-6 rounded-2xl",
+        navDisabled && "pointer-events-none opacity-70",
+        className,
+      )}
       style={getFormThemeStyle(form.settings)}
+      aria-busy={navDisabled || undefined}
     >
       {showFormTitle && form.title ? (
         <div>
@@ -238,6 +300,20 @@ export function DynamicFormRenderer({
               {form.description}
             </p>
           ) : null}
+        </div>
+      ) : null}
+
+      {syncing || stepBusy ? (
+        <div
+          className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          <Loader2
+            className="h-4 w-4 shrink-0 animate-spin text-primary"
+            aria-hidden="true"
+          />
+          <span>{syncing ? syncingLabel : "Saving step…"}</span>
         </div>
       ) : null}
 
@@ -276,6 +352,7 @@ export function DynamicFormRenderer({
               <Button
                 type="button"
                 variant="outline"
+                disabled={navDisabled}
                 onClick={goBack}
                 style={{
                   borderColor: accentColor,
@@ -290,6 +367,7 @@ export function DynamicFormRenderer({
           </div>
           <Button
             type="button"
+            disabled={navDisabled}
             onClick={() =>
               handleButtonAction(
                 safePageIndex >= pageCount - 1 ? "submit" : "next_page",

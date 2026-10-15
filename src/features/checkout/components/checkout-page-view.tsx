@@ -10,6 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatProductPrice, getProductImageUrl } from "@/features/catalog/lib/product-utils";
 import {
+  EMPTY_CHECKOUT_ADDRESS,
+  type CheckoutAddress,
+} from "@/features/checkout/checkout-address";
+import { CheckoutAddressFields } from "@/features/checkout/components/checkout-address-fields";
+import {
   readCheckoutContactDraft,
   type CheckoutContactDraft,
 } from "@/features/checkout/intake-checkout-draft";
@@ -17,25 +22,20 @@ import { useCart } from "@/hooks/use-cart";
 import { cn } from "@/lib/utils/cn";
 
 export function CheckoutPageView() {
-  const { items, isEmpty, totalCents, isSyncing, refreshFromAsterMd } = useCart();
+  const { items, isEmpty, totalCents, refreshFromAsterMd } = useCart();
   const [contact, setContact] = useState<CheckoutContactDraft | null>(null);
+  const [address, setAddress] = useState<CheckoutAddress>(EMPTY_CHECKOUT_ADDRESS);
   const [ready, setReady] = useState(false);
   const [placedHint, setPlacedHint] = useState(false);
 
   useEffect(() => {
     setContact(readCheckoutContactDraft());
-    let cancelled = false;
-    void (async () => {
-      await refreshFromAsterMd();
-      if (!cancelled) setReady(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
+    setReady(true);
+    void refreshFromAsterMd();
   }, [refreshFromAsterMd]);
 
   const totalLabel = formatProductPrice(totalCents);
-  const showLoading = !ready && isSyncing;
+  const showLoading = !ready;
 
   return (
     <div className="relative isolate">
@@ -129,6 +129,16 @@ export function CheckoutPageView() {
                       first.
                     </p>
                   ) : null}
+
+                  <div className="space-y-4 border-t border-border pt-6">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Shipping address
+                    </h3>
+                    <CheckoutAddressFields
+                      value={address}
+                      onChange={setAddress}
+                    />
+                  </div>
                 </section>
 
                 <section className="space-y-4 border-t border-border pt-6">

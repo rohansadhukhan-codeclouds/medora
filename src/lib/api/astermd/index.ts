@@ -32,6 +32,29 @@ export type {
   EmailVerifyOutcome,
   EmailVerifyResultCode,
 } from "@/lib/api/astermd/email-verify";
+export {
+  createIntakeSubmission,
+  updateIntakeSubmission,
+  syncIntakeSubmission,
+  submitCompletedIntake,
+} from "@/lib/api/astermd/intake-submissions";
+export type {
+  AsterMdIntakeEvent,
+  AsterMdIntakeField,
+  AsterMdIntakeSubmissionRecord,
+  IntakeSyncPhase,
+} from "@/lib/api/astermd/intake-submission-types";
+export {
+  buildBasicOpportunityCreateBody,
+  buildFinalOpportunityCreateBody,
+  createOpportunity,
+  updateOpportunity,
+  opportunityRecordId,
+} from "@/lib/api/astermd/opportunities";
+export type {
+  AsterMdOpportunityRecord,
+  AsterMdOpportunityWriteBody,
+} from "@/lib/api/astermd/opportunity-types";
 export type { AsterMdService } from "@/lib/api/astermd/service";
 export type {
   AsterMdCartApiResponse,

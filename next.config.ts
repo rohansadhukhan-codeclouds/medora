@@ -32,7 +32,6 @@ const nextConfig: NextConfig = {
       { source: "/register", destination: "/", permanent: false },
       { source: "/eligibility", destination: "/", permanent: false },
       { source: "/plan", destination: "/", permanent: false },
-      { source: "/checkout", destination: "/", permanent: false },
       { source: "/verification", destination: "/", permanent: false },
       { source: "/review", destination: "/", permanent: false },
       { source: "/status", destination: "/", permanent: false },

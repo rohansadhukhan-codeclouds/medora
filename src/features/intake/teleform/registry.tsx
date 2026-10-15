@@ -1,11 +1,18 @@
 "use client";
 
 import type { ComponentType } from "react";
+import { DEFAULT_PHONE_COUNTRY_ISO } from "@/features/intake/data/country-dial-codes";
+import { phoneCountryIsoKey } from "@/features/intake/teleform/field-meta";
+import {
+  isBackButtonAction,
+  resolveButtonAction,
+} from "@/features/intake/teleform/button-actions";
 import { BmiField } from "@/features/intake/teleform/fields/bmi-field";
 import { ButtonField } from "@/features/intake/teleform/fields/button-field";
 import { CheckboxField } from "@/features/intake/teleform/fields/checkbox-field";
 import { ChoiceField } from "@/features/intake/teleform/fields/choice-field";
 import { ContentBlock } from "@/features/intake/teleform/fields/content-block";
+import { DatePickerTeleformField } from "@/features/intake/teleform/fields/date-picker-teleform-field";
 import {
   FormHeaderBlock,
   FormProgressBlock,
@@ -13,22 +20,19 @@ import {
   ImageBlock,
   ParagraphBlock,
 } from "@/features/intake/teleform/fields/display-fields";
+import { EmailVerifyField } from "@/features/intake/teleform/fields/email-verify-field";
+import { PhoneCountryTeleformField } from "@/features/intake/teleform/fields/phone-country-teleform-field";
 import { RadioField } from "@/features/intake/teleform/fields/radio-field";
 import { SelectField } from "@/features/intake/teleform/fields/select-field";
 import { TermsField } from "@/features/intake/teleform/fields/terms-field";
-import { DatePickerTeleformField } from "@/features/intake/teleform/fields/date-picker-teleform-field";
-import { EmailVerifyField } from "@/features/intake/teleform/fields/email-verify-field";
-import { PhoneCountryTeleformField } from "@/features/intake/teleform/fields/phone-country-teleform-field";
 import { TextField } from "@/features/intake/teleform/fields/text-field";
 import { TextareaField } from "@/features/intake/teleform/fields/textarea-field";
 import { UnsupportedField } from "@/features/intake/teleform/fields/unsupported-field";
-import { phoneCountryIsoKey } from "@/features/intake/teleform/field-meta";
 import type {
   NormalizedTeleformField,
   TeleformFieldType,
   TeleformValues,
 } from "@/features/intake/teleform/types";
-import { DEFAULT_PHONE_COUNTRY_ISO } from "@/features/intake/data/country-dial-codes";
 
 export type FieldRenderProps = {
   field: NormalizedTeleformField;
@@ -269,19 +273,24 @@ function ContentAdapter({ field }: FieldRenderProps) {
 function ButtonAdapter({
   field,
   pageIndex,
+  pageCount,
   accentColor,
   onButtonAction,
 }: FieldRenderProps) {
+  let action = resolveButtonAction(field);
+  const isBack = isBackButtonAction(action);
+  // Final page schema often sets buttonAction "none" on Next — always finish.
+  if (!isBack && pageCount > 0 && pageIndex >= pageCount - 1) {
+    action = "submit";
+  }
+
   return (
     <ButtonField
       field={field}
+      actionOverride={action}
       accentColor={accentColor}
-      disabled={
-        (/back|previous/i.test(field.label || "") ||
-          field.meta?.buttonAction === "previous_page") &&
-        pageIndex === 0
-      }
-      onAction={(nextAction) => onButtonAction?.(nextAction)}
+      disabled={isBack && pageIndex === 0}
+      onAction={(nextAction) => onButtonAction?.(nextAction || action)}
     />
   );
 }

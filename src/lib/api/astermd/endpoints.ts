@@ -29,9 +29,21 @@ export const ASTERMD_ENDPOINTS = {
   // Remaining domain paths stay placeholders until wired from docs/SDK.
   patients: "/v1/sales/patients",
   patientById: (id: string) => `/v1/sales/patients/${encodeURIComponent(id)}`,
+  /** Official AsterMD SDK intake-submissions paths. */
+  intakeSubmissionsCreate: "/v1/sales/intake-submissions/create",
+  intakeSubmissionsUpdate: (sessionId: string) =>
+    `/v1/sales/intake-submissions/update/${encodeURIComponent(sessionId)}`,
+  intakeSubmissionsView: (sessionId: string) =>
+    `/v1/sales/intake-submissions/view/${encodeURIComponent(sessionId)}`,
+  /** @deprecated Prefer intakeSubmissionsCreate / Update / View */
   intakes: "/v1/sales/intake-submissions",
   intakeById: (id: string) =>
     `/v1/sales/intake-submissions/${encodeURIComponent(id)}`,
+  opportunitiesCreate: "/v1/sales/opportunities/create",
+  opportunitiesUpdate: (id: string) =>
+    `/v1/sales/opportunities/update/${encodeURIComponent(id)}`,
+  opportunitiesView: (id: string) =>
+    `/v1/sales/opportunities/view/${encodeURIComponent(id)}`,
   appointments: "/v1/sales/appointments",
   prescriptions: "/v1/sales/prescriptions",
   messages: "/v1/sales/messages",

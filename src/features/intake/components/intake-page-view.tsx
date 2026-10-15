@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ClipboardList } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
 import { extractCheckoutContact } from "@/features/checkout/extract-contact-from-teleform";
 import { saveCheckoutContactDraft } from "@/features/checkout/intake-checkout-draft";
-import { DynamicFormRenderer } from "@/features/intake/teleform/dynamic-form-renderer";
+import {
+  DynamicFormRenderer,
+  type TeleformStepAdvanceInfo,
+} from "@/features/intake/teleform/dynamic-form-renderer";
 import { IntakeLoading } from "@/features/intake/teleform/intake-loading";
+import { syncIntakeClient } from "@/features/intake/teleform/sync-intake-client";
 import type { TeleformValues } from "@/features/intake/teleform/types";
 
 type TeleformBootstrapResponse = {
@@ -26,22 +29,83 @@ function readFormName(formJson: unknown): string | null {
   return typeof name === "string" && name.trim() ? name.trim() : null;
 }
 
+function readPageCount(formJson: unknown): number {
+  if (!formJson || typeof formJson !== "object") return 1;
+  const pages = (formJson as { pages?: unknown }).pages;
+  if (Array.isArray(pages) && pages.length > 0) return pages.length;
+  const sections = (formJson as { sections?: unknown }).sections;
+  if (Array.isArray(sections) && sections.length > 0) return sections.length;
+  return 1;
+}
+
 export function IntakePageView() {
-  const router = useRouter();
   const [percent, setPercent] = useState(6);
+  const [loaderLabel, setLoaderLabel] = useState("Fetching intake form");
+  const [loaderDetail, setLoaderDetail] = useState(
+    "Loading schema and building your form…",
+  );
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
   const [error, setError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [savingFinal, setSavingFinal] = useState(false);
   const [formJson, setFormJson] = useState<unknown>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Avoid Date.now() during render — breaks Next.js prerender purity checks.
   const startedAt = useRef(0);
 
-  const handleTeleformSubmit = (values: TeleformValues) => {
-    const contact = extractCheckoutContact(values);
-    saveCheckoutContactDraft(contact);
-    router.push("/checkout");
+  const handleStepAdvance = async (info: TeleformStepAdvanceInfo) => {
+    if (!formJson) return false;
+    setSyncing(true);
+    setSyncError(null);
+    const result = await syncIntakeClient({
+      phase: "progress",
+      formDefinition: formJson,
+      values: info.values,
+      page: info.progressPage,
+      totalPages: info.pageCount,
+    });
+    setSyncing(false);
+    if (!result.ok) {
+      setSyncError(result.error);
+      return false;
+    }
+    return true;
+  };
+
+  const handleTeleformSubmit = async (
+    values: TeleformValues,
+    metadata: { pageCount: number; progressPage: number },
+  ) => {
+    if (!formJson) return;
+    setSavingFinal(true);
+    setSyncing(true);
+    setSyncError(null);
+
+    const result = await syncIntakeClient({
+      phase: "complete",
+      formDefinition: formJson,
+      values,
+      page: metadata.progressPage,
+      totalPages: metadata.pageCount,
+    });
+
+    if (!result.ok) {
+      setSyncError(result.error);
+      setSyncing(false);
+      setSavingFinal(false);
+      return;
+    }
+
+    try {
+      const contact = extractCheckoutContact(values);
+      saveCheckoutContactDraft(contact);
+    } catch {
+      // Prefer navigation even if draft extract fails.
+    }
+
+    window.location.assign("/checkout");
   };
 
   useEffect(() => {
@@ -50,15 +114,19 @@ export function IntakePageView() {
 
     tickRef.current = setInterval(() => {
       setPercent((prev) => {
-        if (prev >= 92) return prev;
-        if (prev < 35) return prev + 2;
-        if (prev < 70) return prev + 1.5;
-        return prev + 0.6;
+        if (prev >= 88) return prev;
+        if (prev < 30) return prev + 2.2;
+        if (prev < 55) return prev + 1.4;
+        if (prev < 75) return prev + 0.8;
+        return prev + 0.35;
       });
     }, 160);
 
     void (async () => {
       try {
+        setLoaderLabel("Fetching intake form");
+        setLoaderDetail("Loading schema and building your form…");
+
         const response = await fetch("/api/teleform", {
           method: "GET",
           cache: "no-store",
@@ -74,6 +142,31 @@ export function IntakePageView() {
           return;
         }
 
+        setFormJson(payload.formJson);
+        setPercent((prev) => Math.max(prev, 62));
+        setLoaderLabel("Starting intake session");
+        setLoaderDetail("Creating your intake submission…");
+
+        const totalPages = readPageCount(payload.formJson);
+        const initResult = await syncIntakeClient({
+          phase: "initiate",
+          formDefinition: payload.formJson,
+          values: {},
+          page: 1,
+          totalPages,
+        });
+
+        if (cancelled) return;
+
+        if (!initResult.ok) {
+          setStatus("error");
+          setError(initResult.error);
+          setPercent(100);
+          return;
+        }
+
+        setPercent((prev) => Math.max(prev, 92));
+
         const elapsed = Date.now() - startedAt.current;
         const waitMore = Math.max(0, MIN_LOADER_MS - elapsed);
         if (waitMore > 0) {
@@ -82,10 +175,9 @@ export function IntakePageView() {
         if (cancelled) return;
 
         setPercent(100);
-        setFormJson(payload.formJson);
-        // Schema used to construct DynamicFormRenderer (not patient answers).
-        console.log("[intake] teleform formJson", payload.formJson);
-        await new Promise((resolve) => setTimeout(resolve, 280));
+        setLoaderLabel("Almost ready");
+        setLoaderDetail("Opening your intake form…");
+        await new Promise((resolve) => setTimeout(resolve, 220));
         if (cancelled) return;
         setStatus("ready");
       } catch {
@@ -138,7 +230,11 @@ export function IntakePageView() {
 
         <div className="mt-10">
           {status === "loading" ? (
-            <IntakeLoading percent={percent} label="Fetching intake form" />
+            <IntakeLoading
+              percent={percent}
+              label={loaderLabel}
+              detail={loaderDetail}
+            />
           ) : null}
 
           {status === "error" ? (
@@ -162,9 +258,22 @@ export function IntakePageView() {
           {status === "ready" && formJson ? (
             <Reveal trigger="mount">
               <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+                {syncError ? (
+                  <div
+                    className="mb-4 rounded-xl border border-destructive/20 bg-destructive-muted px-4 py-3 text-sm text-destructive"
+                    role="alert"
+                  >
+                    {syncError}
+                  </div>
+                ) : null}
                 <DynamicFormRenderer
                   formDefinition={formJson}
                   showFormTitle={false}
+                  syncing={syncing}
+                  syncingLabel={
+                    savingFinal ? "Saving…" : "Saving your answers…"
+                  }
+                  onStepAdvance={handleStepAdvance}
                   onSubmit={handleTeleformSubmit}
                 />
               </div>

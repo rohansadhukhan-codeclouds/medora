@@ -6,11 +6,13 @@ import { Progress } from "@/components/ui/progress";
 type Props = {
   percent: number;
   label?: string;
+  detail?: string;
 };
 
 export function IntakeLoading({
   percent,
-  label = "Fetching intake form",
+  label = "Preparing your intake",
+  detail = "Loading schema and starting your session…",
 }: Props) {
   const safe = Math.max(0, Math.min(100, Math.round(percent)));
 
@@ -28,9 +30,7 @@ export function IntakeLoading({
         />
         <div>
           <p className="text-sm font-semibold text-foreground">{label}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Loading schema and building your form…
-          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>
         </div>
       </div>
 
