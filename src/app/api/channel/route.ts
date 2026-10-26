@@ -46,6 +46,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    console.log("[AsterMD] channel details", {
+      source: cacheHit ? "cache" : "live",
+      cachedAt,
+      expiresAt,
+      data,
+    });
+
     const isMockFallback =
       typeof payload.message === "string" &&
       payload.message.toLowerCase().includes("mock");

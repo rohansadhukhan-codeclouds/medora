@@ -19,6 +19,7 @@ export function ChannelProvider({ children }: { children: React.ReactNode }) {
         Date.now() < state.expiresAt;
 
       if (fresh) {
+        console.log("[channel] details (hydrated cache)", state.channel);
         if (state.status !== "success") {
           state.setStatus("success");
         }

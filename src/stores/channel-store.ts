@@ -82,6 +82,7 @@ export const useChannelStore = create<ChannelStoreState>()(
           current.status === "success" &&
           isClientCacheFresh(current.channel, current.expiresAt)
         ) {
+          console.log("[channel] details (client cache)", current.channel);
           return current.channel;
         }
 
@@ -130,6 +131,8 @@ export const useChannelStore = create<ChannelStoreState>()(
           const expiresAtMs = payload.expiresAt
             ? Date.parse(payload.expiresAt)
             : Date.now() + CHANNEL_CLIENT_CACHE_TTL_MS;
+
+          console.log("[channel] details", payload.data);
 
           set({
             channel: payload.data,
