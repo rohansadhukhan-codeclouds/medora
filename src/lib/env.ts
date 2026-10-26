@@ -47,6 +47,11 @@ const serverEnvSchema = z.object({
     .transform((value) => value === "true"),
   APP_URL: z.string().url().optional(),
   ASTERMD_CDN_URL: z.string().url().optional(),
+
+  /** Stripe secret key (sk_…) — SERVER ONLY. */
+  STRIPE_API_KEY: optionalNonEmpty,
+  /** Stripe publishable key (pk_…) — returned to the browser via BFF only. */
+  STRIPE_PUBLISHABLE_KEY: optionalNonEmpty,
 });
 
 export type AppEnv = z.infer<typeof appEnvSchema>;
@@ -81,6 +86,10 @@ function readServerEnv(): ServerEnv {
     ASTERMD_USE_MOCK: process.env.ASTERMD_USE_MOCK ?? "true",
     APP_URL: process.env.APP_URL?.trim() || undefined,
     ASTERMD_CDN_URL: process.env.ASTERMD_CDN_URL?.trim() || undefined,
+
+    STRIPE_API_KEY: process.env.STRIPE_API_KEY?.trim() || undefined,
+    STRIPE_PUBLISHABLE_KEY:
+      process.env.STRIPE_PUBLISHABLE_KEY?.trim() || undefined,
   });
 
   if (!parsed.success) {

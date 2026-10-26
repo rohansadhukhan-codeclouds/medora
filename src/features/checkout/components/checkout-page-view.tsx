@@ -1,19 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { ArrowLeft, CreditCard, Loader2, ShoppingBag } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 import { ProductImage } from "@/components/shared/product-image";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formatProductPrice, getProductImageUrl } from "@/features/catalog/lib/product-utils";
-import {
-  EMPTY_CHECKOUT_ADDRESS,
-  type CheckoutAddress,
-} from "@/features/checkout/checkout-address";
-import { CheckoutAddressFields } from "@/features/checkout/components/checkout-address-fields";
+import { CheckoutOrderForm } from "@/features/checkout/components/checkout-order-form";
 import {
   readCheckoutContactDraft,
   type CheckoutContactDraft,
@@ -26,13 +22,12 @@ import { cn } from "@/lib/utils/cn";
 export function CheckoutPageView() {
   const { items, isEmpty, totalCents, refreshFromAsterMd } = useCart();
   const [contact, setContact] = useState<CheckoutContactDraft | null>(null);
-  const [address, setAddress] = useState<CheckoutAddress>(EMPTY_CHECKOUT_ADDRESS);
   const [ready, setReady] = useState(false);
-  const [placedHint, setPlacedHint] = useState(false);
-  const [placing, setPlacing] = useState(false);
+  const [stripePromise, setStripePromise] =
+    useState<Promise<Stripe | null> | null>(null);
+  const [stripeError, setStripeError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Completing checkout path → next /intake visit must start a new submission.
     markIntakeResumeCompleted();
     clearIntakeDraft();
     setContact(readCheckoutContactDraft());
@@ -40,8 +35,61 @@ export function CheckoutPageView() {
     void refreshFromAsterMd();
   }, [refreshFromAsterMd]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/checkout/stripe", {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          if (!cancelled) {
+            setStripeError(payload.error || "Stripe is not configured.");
+          }
+          return;
+        }
+        const payload = (await response.json().catch(() => ({}))) as {
+          ok?: boolean;
+          publishableKey?: string;
+          error?: string;
+        };
+        if (cancelled) return;
+        if (!payload.ok || !payload.publishableKey) {
+          setStripeError(payload.error || "Stripe is not configured.");
+          return;
+        }
+        setStripePromise(loadStripe(payload.publishableKey));
+      } catch {
+        if (!cancelled) setStripeError("Unable to load Stripe.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const totalLabel = formatProductPrice(totalCents);
-  const showLoading = !ready;
+  const elementsOptions = useMemo(
+    () => ({
+      appearance: {
+        theme: "stripe" as const,
+        variables: {
+          colorPrimary: "#0f6e6e",
+          colorBackground: "#ffffff",
+          colorText: "#0f172a",
+          colorDanger: "#dc2626",
+          borderRadius: "8px",
+        },
+      },
+    }),
+    [],
+  );
+
+  const showLoading = !ready || (!stripePromise && !stripeError);
 
   return (
     <div className="relative isolate">
@@ -69,8 +117,8 @@ export function CheckoutPageView() {
                 Complete your order
               </h1>
               <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-                Contact details are filled from your intake. Payment is static
-                for now — live checkout APIs come next.
+                Contact details are filled from your intake. Pay with Stripe to
+                generate the order.
               </p>
             </div>
           </div>
@@ -81,152 +129,26 @@ export function CheckoutPageView() {
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
             Loading checkout…
           </div>
+        ) : stripeError ? (
+          <div
+            className="mt-10 rounded-2xl border border-destructive/20 bg-destructive-muted p-6 text-sm text-destructive"
+            role="alert"
+          >
+            <p className="font-medium">Checkout is unavailable</p>
+            <p className="mt-2">{stripeError}</p>
+          </div>
         ) : (
           <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
             <Reveal trigger="mount">
-              <form
-                className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  if (placing || isEmpty) return;
-                  setPlacing(true);
-                  // Static checkout — brief loading feedback before confirm copy.
-                  window.setTimeout(() => {
-                    setPlacedHint(true);
-                    setPlacing(false);
-                  }, 450);
-                }}
-              >
-                <section className="space-y-4">
-                  <h2 className="text-base font-semibold text-foreground">
-                    Contact
-                  </h2>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="checkout-name">Name</Label>
-                      <Input
-                        id="checkout-name"
-                        value={contact?.name ?? ""}
-                        readOnly
-                        className="bg-muted/40"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="checkout-email">Email</Label>
-                      <Input
-                        id="checkout-email"
-                        type="email"
-                        value={contact?.email ?? ""}
-                        readOnly
-                        className="bg-muted/40"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="checkout-phone">Phone</Label>
-                      <Input
-                        id="checkout-phone"
-                        type="tel"
-                        value={contact?.phone ?? ""}
-                        readOnly
-                        className="bg-muted/40"
-                      />
-                    </div>
-                  </div>
-                  {!contact?.name && !contact?.email ? (
-                    <p className="text-sm text-muted-foreground">
-                      No intake contact found.{" "}
-                      <Link href="/intake" className="text-primary underline-offset-2 hover:underline">
-                        Complete intake
-                      </Link>{" "}
-                      first.
-                    </p>
-                  ) : null}
-
-                  <div className="space-y-4 border-t border-border pt-6">
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Shipping address
-                    </h3>
-                    <CheckoutAddressFields
-                      value={address}
-                      onChange={setAddress}
-                    />
-                  </div>
-                </section>
-
-                <section className="space-y-4 border-t border-border pt-6">
-                  <h2 className="text-base font-semibold text-foreground">
-                    Card details
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    Static preview only — do not enter real card data.
-                  </p>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="card-name">Name on card</Label>
-                      <Input
-                        id="card-name"
-                        defaultValue="Jane Patient"
-                        autoComplete="off"
-                      />
-                    </div>
-                    <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="card-number">Card number</Label>
-                      <Input
-                        id="card-number"
-                        defaultValue="4242 4242 4242 4242"
-                        autoComplete="off"
-                        inputMode="numeric"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="card-expiry">Expiry</Label>
-                      <Input
-                        id="card-expiry"
-                        defaultValue="12 / 28"
-                        autoComplete="off"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="card-cvc">CVC</Label>
-                      <Input
-                        id="card-cvc"
-                        defaultValue="123"
-                        autoComplete="off"
-                        inputMode="numeric"
-                      />
-                    </div>
-                  </div>
-                </section>
-
-                <div className="border-t border-border pt-6">
-                  <Button
-                    type="submit"
-                    className="w-full sm:w-auto"
-                    disabled={isEmpty || placing}
-                    aria-busy={placing || undefined}
-                  >
-                    {placing ? (
-                      <>
-                        <Loader2
-                          className="h-4 w-4 animate-spin"
-                          aria-hidden="true"
-                        />
-                        Processing…
-                      </>
-                    ) : placedHint ? (
-                      "Order noted"
-                    ) : (
-                      "Place order"
-                    )}
-                  </Button>
-                  {placedHint ? (
-                    <p className="mt-3 text-sm text-muted-foreground" role="status">
-                      Static checkout — payment APIs will be wired in the next
-                      phase.
-                    </p>
-                  ) : null}
-                </div>
-              </form>
+              {stripePromise ? (
+                <Elements stripe={stripePromise} options={elementsOptions}>
+                  <CheckoutOrderForm
+                    contact={contact}
+                    items={items}
+                    isEmpty={isEmpty}
+                  />
+                </Elements>
+              ) : null}
             </Reveal>
 
             <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
