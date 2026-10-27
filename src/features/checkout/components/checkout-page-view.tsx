@@ -10,6 +10,7 @@ import { ProductImage } from "@/components/shared/product-image";
 import { Button } from "@/components/ui/button";
 import { formatProductPrice, getProductImageUrl } from "@/features/catalog/lib/product-utils";
 import { CheckoutOrderForm } from "@/features/checkout/components/checkout-order-form";
+import { recordCheckoutVisit } from "@/features/checkout/record-checkout-visit";
 import {
   readCheckoutContactDraft,
   type CheckoutContactDraft,
@@ -17,10 +18,11 @@ import {
 import { clearIntakeDraft } from "@/features/intake/teleform/intake-draft-storage";
 import { markIntakeResumeCompleted } from "@/features/intake/teleform/intake-resume-storage";
 import { useCart } from "@/hooks/use-cart";
+import { useCartStore } from "@/stores/cart-store";
 import { cn } from "@/lib/utils/cn";
 
 export function CheckoutPageView() {
-  const { items, isEmpty, totalCents, refreshFromAsterMd } = useCart();
+  const { items, isEmpty, totalCents } = useCart();
   const [contact, setContact] = useState<CheckoutContactDraft | null>(null);
   const [ready, setReady] = useState(false);
   const [stripePromise, setStripePromise] =
@@ -32,8 +34,22 @@ export function CheckoutPageView() {
     clearIntakeDraft();
     setContact(readCheckoutContactDraft());
     setReady(true);
-    void refreshFromAsterMd();
-  }, [refreshFromAsterMd]);
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        await useCartStore.getState().refreshFromAsterMd();
+        if (cancelled) return;
+        await recordCheckoutVisit(useCartStore.getState().items);
+      })();
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // One visit per checkout mount. Deps length must stay fixed (React invariant).
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

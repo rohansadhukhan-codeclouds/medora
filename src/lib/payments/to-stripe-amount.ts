@@ -11,3 +11,8 @@ export function toStripeAmountCents(amount: number): number {
   }
   return Math.round(amount);
 }
+
+/** Dollar amount for AsterMD payloads (e.g. 0.6, 149.99). */
+export function toMajorAmount(amount: number): number {
+  return Number((toStripeAmountCents(amount) / 100).toFixed(2));
+}

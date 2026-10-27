@@ -13,6 +13,9 @@ export const ASTERMD_ENDPOINTS = {
     `/v1/sales/carts/update/${encodeURIComponent(sessionId)}`,
   cartsView: (sessionId: string) =>
     `/v1/sales/carts/view/${encodeURIComponent(sessionId)}`,
+  checkoutEventsCreate: "/v1/sales/checkout-events/create",
+  checkoutEventsUpdate: (sessionId: string) =>
+    `/v1/sales/checkout-events/update/${encodeURIComponent(sessionId)}`,
   teleformsView: (teleformId: string) =>
     `/v1/sales/teleforms/view/${encodeURIComponent(teleformId)}`,
   /**

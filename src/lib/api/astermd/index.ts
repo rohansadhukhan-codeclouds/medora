@@ -27,6 +27,15 @@ export {
   viewSalesCart,
   syncSalesCart,
 } from "@/lib/api/astermd/carts";
+export {
+  createCheckoutEvent,
+  updateCheckoutEvent,
+} from "@/lib/api/astermd/checkout-events";
+export type {
+  AsterMdCheckoutEventCreateBody,
+  AsterMdCheckoutEventRecord,
+  AsterMdCheckoutEventUpdateBody,
+} from "@/lib/api/astermd/checkout-event-types";
 export { verifyEmailAddress } from "@/lib/api/astermd/email-verify";
 export type {
   EmailVerifyOutcome,

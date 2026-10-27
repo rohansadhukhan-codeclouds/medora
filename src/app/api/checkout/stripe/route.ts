@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { updateCheckoutEvent } from "@/lib/api/astermd/checkout-events";
+import { normalizeAsterMdError } from "@/lib/api/astermd/errors";
+import { checkoutEventFromStripe } from "@/lib/payments/checkout-event-from-stripe";
 import {
   getStripe,
   getStripePublishableKey,
@@ -7,6 +10,7 @@ import {
   toPlainJson,
 } from "@/lib/payments/stripe";
 import { toStripeAmountCents } from "@/lib/payments/to-stripe-amount";
+import { getOpportunityId } from "@/lib/session/opportunity-cookie";
 import { getVisitorSessionId } from "@/lib/session/visitor-session";
 
 const NO_STORE = { "Cache-Control": "private, no-store" } as const;
@@ -62,6 +66,40 @@ function countryCode(value: unknown): string | undefined {
   return raw.toUpperCase();
 }
 
+async function recordOrderCheckoutEvent(
+  event: "order_placed" | "order_declined",
+  paymentIntent: Stripe.PaymentIntent,
+  items: CheckoutLine[],
+): Promise<void> {
+  const sessionId = await getVisitorSessionId();
+  if (!sessionId) {
+    console.warn("[AsterMD] skip checkout event update — no session");
+    return;
+  }
+
+  try {
+    const opportunityId = await getOpportunityId();
+    const body = checkoutEventFromStripe({
+      event,
+      paymentIntent,
+      items,
+      opportunityId,
+    });
+    await updateCheckoutEvent(sessionId, body);
+    console.log("[AsterMD] checkout event updated", {
+      event: body.event,
+      providerOrderIds: body.provider_order_id ?? [],
+    });
+  } catch (error) {
+    const normalized = normalizeAsterMdError(error);
+    console.error(
+      "[AsterMD] checkout event update failed",
+      normalized.code,
+      normalized.status,
+    );
+  }
+}
+
 /**
  * GET — publishable key only (never the secret).
  */
@@ -111,6 +149,23 @@ export async function POST(request: NextRequest) {
         amount: paymentIntent.amount,
         currency: paymentIntent.currency,
       });
+      const retrieveItems = parseLines(body.items);
+      if (paymentIntent.status === "succeeded") {
+        await recordOrderCheckoutEvent(
+          "order_placed",
+          paymentIntent,
+          retrieveItems,
+        );
+      } else if (
+        paymentIntent.status === "canceled" ||
+        paymentIntent.status === "requires_payment_method"
+      ) {
+        await recordOrderCheckoutEvent(
+          "order_declined",
+          paymentIntent,
+          retrieveItems,
+        );
+      }
       return NextResponse.json(
         {
           ok: true,
@@ -234,6 +289,10 @@ export async function POST(request: NextRequest) {
       chargeId: charge?.id ?? paymentIntent.latest_charge ?? null,
     });
 
+    if (paymentIntent.status === "succeeded") {
+      await recordOrderCheckoutEvent("order_placed", paymentIntent, items);
+    }
+
     return NextResponse.json(
       {
         ok: true,
@@ -250,6 +309,13 @@ export async function POST(request: NextRequest) {
         code: error.code,
         statusCode: error.statusCode,
       });
+      if (error.payment_intent) {
+        await recordOrderCheckoutEvent(
+          "order_declined",
+          error.payment_intent,
+          [],
+        );
+      }
       return NextResponse.json(
         {
           ok: false,

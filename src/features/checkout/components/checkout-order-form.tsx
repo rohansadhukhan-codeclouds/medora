@@ -50,12 +50,6 @@ function readIntentStatus(payload: StripeCheckoutPayload): string | null {
   return typeof status === "string" ? status : null;
 }
 
-function readIntentId(payload: StripeCheckoutPayload): string | null {
-  const intent = payload.paymentIntent;
-  if (!intent || typeof intent !== "object") return null;
-  const id = (intent as { id?: unknown }).id;
-  return typeof id === "string" ? id : null;
-}
 
 export function CheckoutOrderForm({ contact, items, isEmpty }: Props) {
   const stripe = useStripe();
@@ -198,8 +192,13 @@ export function CheckoutOrderForm({ contact, items, isEmpty }: Props) {
       ) {
         const confirmed = await stripe.confirmCardPayment(clientSecret);
         console.log("[checkout] stripe 3DS confirm", confirmed);
+        const existingId =
+          payload.paymentIntent && typeof payload.paymentIntent === "object"
+            ? (payload.paymentIntent as { id?: unknown }).id
+            : undefined;
         const intentId =
-          confirmed.paymentIntent?.id || readIntentId(payload);
+          confirmed.paymentIntent?.id ||
+          (typeof existingId === "string" ? existingId : null);
         if (confirmed.error) {
           payload = {
             ok: false,
@@ -212,7 +211,15 @@ export function CheckoutOrderForm({ contact, items, isEmpty }: Props) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             cache: "no-store",
-            body: JSON.stringify({ paymentIntentId: intentId }),
+            body: JSON.stringify({
+              paymentIntentId: intentId,
+              items: items.map((item) => ({
+                id: item.id,
+                name: item.name,
+                price: item.priceCents ?? 0,
+                priceCents: item.priceCents ?? 0,
+              })),
+            }),
           });
           payload = (await retrieveResponse.json().catch(() => ({}))) as StripeCheckoutPayload;
           console.log("[checkout] stripe retrieve response", payload);
@@ -342,22 +349,6 @@ export function CheckoutOrderForm({ contact, items, isEmpty }: Props) {
         <p className="text-sm text-destructive" role="alert">
           {error}
         </p>
-      ) : null}
-
-      {result ? (
-        <div className="rounded-xl border border-border bg-muted/40 p-4">
-          <p className="text-sm font-medium text-foreground">
-            {paid ? "Payment succeeded" : "Stripe response"}
-          </p>
-          {readIntentId(result) ? (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {readIntentId(result)} · {readIntentStatus(result) ?? "unknown"}
-            </p>
-          ) : null}
-          <pre className="mt-3 max-h-64 overflow-auto text-xs text-foreground">
-            {JSON.stringify(result, null, 2)}
-          </pre>
-        </div>
       ) : null}
 
       <div className="border-t border-border pt-6">
